@@ -1,4 +1,5 @@
 export type FabricMgmtOperation =
+  | "status"
   | "install"
   | "connect"
   | "workspaces"
@@ -16,6 +17,9 @@ export function buildFabricMgmtCommand(
   input: FabricMgmtCommandInput = {}
 ): string {
   switch (operation) {
+    case "status":
+      return "Get-Module -ListAvailable -Name MicrosoftFabricMgmt | Select-Object Name, Version, Path";
+
     case "install":
       return "Install-Module -Name MicrosoftFabricMgmt -Scope CurrentUser -Repository PSGallery";
 
