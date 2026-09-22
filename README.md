@@ -23,10 +23,11 @@ The extension now provides:
 
 - a **Datapass Fabric** Activity Bar entry;
 - a native VS Code **Project Checklist** grouped by project phase;
-- project-level progress percentage and a computed **Next** action;
+- project-level progress percentage, a dependency-aware **Next** action, and a **Ready now** set;
 - task actions for **open/start**, **in progress**, **done**, **blocked**, and **todo**;
+- explicit task dependencies so the Foil’o path teaches sequencing such as Eventstream → Bronze → Silver → Gold → semantic model → Power BI;
 - explicit task-to-resource links for workspace, Eventstream, Eventhouse, Lakehouse, medallion notebooks, semantic model, report and deployment pipeline;
-- consistency validation that flags a completed task when its linked Fabric resource is not recorded;
+- consistency validation that flags missing linked resources and dependency/sequencing violations;
 - one-click capture/update of the Fabric resource linked to a checklist task;
 - prompts to keep task state and resource state synchronized;
 - upstream Fabric command handoff with portal fallback;
@@ -148,6 +149,7 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 - architecture;
 - progress percentage;
 - next action;
+- tasks that are ready now;
 - completed work;
 - in-progress work;
 - remaining checklist tasks;
