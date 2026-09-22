@@ -31,6 +31,7 @@ type ProjectSummary = {
   total: number;
   percent: number;
   nextTitle?: string;
+  nextTaskId?: string;
   resourceCount: number;
   issueCount: number;
   architectureStages: Array<{
@@ -189,7 +190,16 @@ export function App(): React.JSX.Element {
             </div>
           </div>
           <div className="buttonRow">
-            <button onClick={() => command("checklist")}>Open checklist</button>
+            <button
+              disabled={!state.project.nextTaskId}
+              onClick={() => command("next")}
+            >
+              {state.project.nextTaskId ? "Start next step" : "Checklist complete"}
+            </button>
+            <button className="secondary" onClick={() => command("validate")}>Validate state</button>
+          </div>
+          <div className="buttonRow compactRow">
+            <button className="secondary" onClick={() => command("checklist")}>Open checklist</button>
             <button className="secondary" onClick={() => command("handoff")}>AI handoff</button>
           </div>
         </section>
