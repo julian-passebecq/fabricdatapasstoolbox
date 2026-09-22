@@ -1,7 +1,7 @@
 export type ToolUi = "Existing UI" | "Datapass UI" | "CLI / Script";
 
 export interface PrimaryToolDefinition {
-  id: "fabricStudio" | "migration" | "assessment" | "security" | "mcp";
+  id: "fabricStudio" | "migration" | "assessment" | "security" | "fabricMgmt" | "mcp";
   name: string;
   description: string;
   ui: ToolUi;
@@ -45,6 +45,13 @@ export const PRIMARY_TOOLS: PrimaryToolDefinition[] = [
     description: "Guided front end for the existing PowerShell security troubleshooter in Microsoft Fabric Toolbox.",
     ui: "Datapass UI",
     url: `${toolboxBase}/tools/fabric-security-audit`
+  },
+  {
+    id: "fabricMgmt",
+    name: "Microsoft Fabric Management",
+    description: "Guided PowerShell 7 front end for interactive Fabric administration and read/list commands without collecting credentials.",
+    ui: "Datapass UI",
+    url: `${toolboxBase}/tools/MicrosoftFabricMgmt`
   },
   {
     id: "mcp",
@@ -152,13 +159,6 @@ export const CURATED_TOOLBOX_ITEMS: CatalogItemDefinition[] = [
     category: "Development",
     surface: "Tool / script",
     url: `${toolboxBase}/tools/Lineage_Extractor`
-  },
-  {
-    id: "fabricMgmt",
-    name: "Microsoft Fabric Management",
-    category: "Development",
-    surface: "Tool / script",
-    url: `${toolboxBase}/tools/MicrosoftFabricMgmt`
   },
   {
     id: "fabricMgmtMcp",
