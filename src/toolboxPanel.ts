@@ -6,6 +6,7 @@ import {
 } from "./fabricIntegration";
 import { getProgress, getProjectIssues, getReadyTasks, readManifest, readManifestResult } from "./projectState";
 import { CURATED_TOOLBOX_ITEMS, findToolUrl, PRIMARY_TOOLS } from "./toolboxCatalog";
+import { PROJECT_TEMPLATES } from "./projectTemplates";
 import {
   configureToolboxRoot,
   copyAssessmentCommand,
@@ -123,6 +124,9 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
     const progress = manifest ? getProgress(manifest) : undefined;
     const issues = manifest ? getProjectIssues(manifest) : [];
     const readyTasks = manifest ? getReadyTasks(manifest) : [];
+    const template = manifest?.project.templateId
+      ? PROJECT_TEMPLATES.find(item => item.id === manifest.project.templateId)
+      : undefined;
     await this.view.webview.postMessage({
       type: "state",
       environment,
@@ -138,6 +142,15 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
             name: manifest.project.name,
             type: manifest.project.type,
             environment: manifest.project.environment,
+            templateId: manifest.project.templateId,
+            templateName: template?.name,
+            templateVersion: manifest.project.templateVersion,
+            templateCurrentVersion: template?.version,
+            templateOutdated: Boolean(
+              template &&
+              manifest.project.templateVersion &&
+              manifest.project.templateVersion < template.version
+            ),
             done: progress.done,
             total: progress.total,
             percent: progress.percent,
