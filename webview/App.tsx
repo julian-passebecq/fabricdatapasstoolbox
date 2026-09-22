@@ -126,9 +126,12 @@ export function App(): React.JSX.Element {
             </div>
             <strong>{state.project.percent}%</strong>
           </div>
-          <div className="progressTrack" aria-label="Project progress">
-            <div className="progressFill" style={{ width: `${state.project.percent}%` }} />
-          </div>
+          <progress
+            className="progressTrack"
+            max={100}
+            value={state.project.percent}
+            aria-label="Project progress"
+          />
           <p className="projectMeta">
             {state.project.done}/{state.project.total} complete · {state.project.type} · {state.project.environment}
           </p>
