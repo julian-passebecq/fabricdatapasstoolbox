@@ -564,3 +564,29 @@ button.templateCheck {
   font-size: 10px;
   line-height: 1.45;
 }
+
+
+.coverageGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.coverageGrid > div {
+  display: grid;
+  gap: 2px;
+  padding: 7px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 5px;
+  background: var(--vscode-editorWidget-background);
+}
+
+.coverageGrid strong {
+  font-size: 13px;
+}
+
+.coverageGrid span {
+  color: var(--vscode-descriptionForeground);
+  font-size: 9px;
+}
