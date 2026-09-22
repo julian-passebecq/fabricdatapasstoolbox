@@ -362,12 +362,16 @@ export function renderHandoff(manifest: FabricProjectManifest): string {
   const validation = issues.length
     ? issues.map(issue => `- ${issue.message}`).join("\n")
     : "- No task/resource or dependency-sequencing issues detected";
+  const templateLabel = manifest.project.templateId
+    ? `${manifest.project.templateId}${manifest.project.templateVersion ? ` v${manifest.project.templateVersion}` : ""}`
+    : "custom";
 
   return `# Fabric project handoff: ${manifest.project.name}
 
 ## Project
 - Type: ${manifest.project.type}
 - Environment: ${manifest.project.environment}
+- Template: ${templateLabel}
 - Progress: ${progress.done}/${progress.total} (${progress.percent}%)
 - Last updated: ${manifest.project.updatedAt}
 
