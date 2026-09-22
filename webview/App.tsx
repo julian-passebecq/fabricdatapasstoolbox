@@ -34,6 +34,7 @@ type ProjectSummary = {
   nextTaskId?: string;
   resourceCount: number;
   issueCount: number;
+  readyTitles: string[];
   architectureStages: Array<{
     label: string;
     items: string[];
@@ -195,6 +196,11 @@ export function App(): React.JSX.Element {
           <p className="next">
             <strong>Next:</strong> {state.project.nextTitle ?? "Checklist complete"}
           </p>
+          {state.project.readyTitles.length > 0 && (
+            <p className="readyNow">
+              <strong>Ready now:</strong> {state.project.readyTitles.join(" · ")}
+            </p>
+          )}
           <div className="architecture">
             <span className="smallLabel">ARCHITECTURE</span>
             <div className="architectureFlow">
