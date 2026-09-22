@@ -53,6 +53,20 @@ type Tool = {
   ui: "Existing UI" | "Datapass UI" | "CLI / Script";
 };
 
+type CatalogItem = {
+  id:
+    | "costMonitoring"
+    | "platformMonitoring"
+    | "sparkMonitoring"
+    | "workspaceMonitoring"
+    | "cicd"
+    | "bcdr"
+    | "semanticAudit";
+  name: string;
+  category: "Monitoring" | "Operations" | "BI";
+  surface: "Report / dashboard" | "Accelerator" | "Tool / script";
+};
+
 const tools: Tool[] = [
   {
     id: "fabricStudio",
@@ -84,6 +98,16 @@ const tools: Tool[] = [
     description: "Optional workspace configuration/status. Datapass keeps MCP visible without making the Fabric workflow depend on it.",
     ui: "Datapass UI"
   }
+];
+
+const catalogItems: CatalogItem[] = [
+  { id: "costMonitoring", name: "Fabric Cost Analysis", category: "Monitoring", surface: "Report / dashboard" },
+  { id: "platformMonitoring", name: "Fabric Platform Monitoring", category: "Monitoring", surface: "Report / dashboard" },
+  { id: "sparkMonitoring", name: "Fabric Spark Monitoring", category: "Monitoring", surface: "Report / dashboard" },
+  { id: "workspaceMonitoring", name: "Workspace Monitoring Dashboards", category: "Monitoring", surface: "Report / dashboard" },
+  { id: "cicd", name: "Fabric CI/CD accelerators", category: "Operations", surface: "Accelerator" },
+  { id: "bcdr", name: "Business Continuity / DR", category: "Operations", surface: "Accelerator" },
+  { id: "semanticAudit", name: "Semantic Model Audit", category: "BI", surface: "Tool / script" }
 ];
 
 const emptyState: ExtensionState = {
@@ -240,6 +264,24 @@ export function App(): React.JSX.Element {
               <p>{tool.description}</p>
               {renderToolAction(tool)}
             </article>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2>Curated Fabric Toolbox catalog</h2>
+        <p className="muted catalogIntro">
+          Useful upstream assets that already exist. Datapass links to them rather than copying their implementation.
+        </p>
+        <div className="catalogList">
+          {catalogItems.map(item => (
+            <div className="catalogRow" key={item.id}>
+              <div>
+                <strong>{item.name}</strong>
+                <div className="catalogMeta">{item.category} · {item.surface}</div>
+              </div>
+              <button className="secondary catalogAction" onClick={() => open(item.id)}>Open</button>
+            </div>
           ))}
         </div>
       </section>
