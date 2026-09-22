@@ -4,6 +4,7 @@ import {
   FabricTask,
   getProgress,
   getProjectIssues,
+  getUnmetDependencies,
   readManifest
 } from "./projectState";
 
@@ -29,6 +30,7 @@ interface TaskNode {
   kind: "task";
   task: FabricTask;
   resourceRecorded: boolean;
+  unmetDependencies: FabricTask[];
 }
 
 interface InfoNode {
@@ -110,6 +112,11 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
             ? "sync~spin"
             : "circle-large-outline";
 
+    const dependencyDescription = element.unmetDependencies.length
+      ? ` · blocked by ${element.unmetDependencies.map(item => item.title).join(", ")}`
+      : task.status === "done"
+        ? ""
+        : " · ready";
     const resourceDescription = task.resourceKey
       ? element.resourceRecorded
         ? " · resource recorded"
@@ -119,7 +126,7 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
     const item = new vscode.TreeItem(task.title, vscode.TreeItemCollapsibleState.None);
     item.iconPath = new vscode.ThemeIcon(icon);
     item.contextValue = "datapassFabric.task";
-    item.description = `${task.status.replace("_", " ")}${resourceDescription}`;
+    item.description = `${task.status.replace("_", " ")}${dependencyDescription}${resourceDescription}`;
     item.tooltip = new vscode.MarkdownString(
       `**${task.phase}**\n\nStatus: ${task.status}\n\n${task.description ?? ""}${task.dependsOn?.length ? `\n\nDepends on: ${task.dependsOn.join(", ")}` : ""}${task.resourceKey ? `\n\nLinked resource: **${task.resourceKey}** — ${element.resourceRecorded ? "recorded" : "missing"}` : ""}`
     );
@@ -160,7 +167,8 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
       return element.tasks.map(task => ({
         kind: "task",
         task,
-        resourceRecorded: task.resourceKey ? Boolean(manifest.resources[task.resourceKey]) : false
+        resourceRecorded: task.resourceKey ? Boolean(manifest.resources[task.resourceKey]) : false,
+        unmetDependencies: getUnmetDependencies(manifest, task)
       }));
     }
 
