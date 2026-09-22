@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { extractFabricId } from "./resourceLocator";
 
 export interface CapturedResource {
   key: string;
@@ -78,27 +79,3 @@ export async function captureResource(expectedKey?: string): Promise<CapturedRes
   };
 }
 
-export function extractFabricId(resourceKey: string, locator: string): string | undefined {
-  const trimmed = locator.trim();
-  const guidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
-  const exactGuid = new RegExp(`^${guidPattern}$`);
-  if (exactGuid.test(trimmed)) {
-    return trimmed;
-  }
-
-  try {
-    const url = new URL(trimmed);
-    const pathname = decodeURIComponent(url.pathname);
-
-    if (resourceKey === "workspace") {
-      const workspaceMatch = pathname.match(new RegExp(`/groups/(${guidPattern})(?:/|$)`, "i"));
-      return workspaceMatch?.[1];
-    }
-
-    const matches = pathname.match(new RegExp(guidPattern, "g"));
-    return matches?.at(-1);
-  } catch {
-    const match = trimmed.match(new RegExp(guidPattern, "i"));
-    return match?.[0];
-  }
-}
