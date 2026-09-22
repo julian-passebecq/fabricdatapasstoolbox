@@ -139,6 +139,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
             total: progress.total,
             percent: progress.percent,
             nextTitle: progress.next?.title,
+            nextTaskId: progress.next?.id,
             resourceCount: Object.keys(manifest.resources).length,
             issueCount: issues.length,
             architectureStages: [
@@ -163,6 +164,18 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
       );
     } else if (command === "handoff") {
       await vscode.commands.executeCommand("datapassFabric.exportHandoff");
+    } else if (command === "next") {
+      const manifest = await readManifest();
+      const next = manifest ? getProgress(manifest).next : undefined;
+      if (next) {
+        await vscode.commands.executeCommand("datapassFabric.taskAction", next.id);
+      } else {
+        void vscode.window.showInformationMessage("Fabric project checklist is complete.");
+      }
+      await this.refresh();
+    } else if (command === "validate") {
+      await vscode.commands.executeCommand("datapassFabric.validateProject");
+      await this.refresh();
     } else if (command === "configureToolboxRoot") {
       await configureToolboxRoot();
       await this.refresh();
