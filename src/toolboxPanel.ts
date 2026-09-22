@@ -5,6 +5,7 @@ import {
   openFabricStudio
 } from "./fabricIntegration";
 import { getProgress, getProjectIssues, getReadyTasks, readManifest } from "./projectState";
+import { CURATED_TOOLBOX_ITEMS, findToolUrl, PRIMARY_TOOLS } from "./toolboxCatalog";
 import {
   configureToolboxRoot,
   copyAssessmentCommand,
@@ -15,19 +16,6 @@ import {
   runSecurityAudit
 } from "./toolRunners";
 
-const URLS: Record<string, string> = {
-  migration: "https://github.com/microsoft/fabric-toolbox/tree/main/tools/FabricDataFactoryMigrationAssistant",
-  assessment: "https://github.com/microsoft/fabric-toolbox/tree/main/tools/fabric-assessment-tool",
-  security: "https://github.com/microsoft/fabric-toolbox/tree/main/tools/fabric-security-audit",
-  toolbox: "https://github.com/microsoft/fabric-toolbox",
-  costMonitoring: "https://github.com/microsoft/fabric-toolbox/tree/main/monitoring/fabric-cost-analysis",
-  platformMonitoring: "https://github.com/microsoft/fabric-toolbox/tree/main/monitoring/fabric-platform-monitoring",
-  sparkMonitoring: "https://github.com/microsoft/fabric-toolbox/tree/main/monitoring/fabric-spark-monitoring",
-  workspaceMonitoring: "https://github.com/microsoft/fabric-toolbox/tree/main/monitoring/workspace-monitoring-dashboards",
-  cicd: "https://github.com/microsoft/fabric-toolbox/tree/main/accelerators/CICD",
-  bcdr: "https://github.com/microsoft/fabric-toolbox/tree/main/accelerators/BCDR",
-  semanticAudit: "https://github.com/microsoft/fabric-toolbox/tree/main/tools/SemanticModelAudit"
-};
 
 export class ToolboxViewProvider implements vscode.WebviewViewProvider {
   static readonly viewType = "datapassFabric.toolbox";
@@ -138,6 +126,8 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
       type: "state",
       environment,
       runtime,
+      tools: PRIMARY_TOOLS,
+      catalogItems: CURATED_TOOLBOX_ITEMS,
       project: manifest && progress
         ? {
             name: manifest.project.name,
@@ -205,7 +195,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    const url = URLS[target];
+    const url = findToolUrl(target);
     if (url) {
       await vscode.env.openExternal(vscode.Uri.parse(url));
     }
