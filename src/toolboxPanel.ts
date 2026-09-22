@@ -183,6 +183,8 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
       await vscode.commands.executeCommand("datapassFabric.exportHandoff");
     } else if (command === "openManifest") {
       await vscode.commands.executeCommand("datapassFabric.openManifest");
+    } else if (command === "templateStatus") {
+      await vscode.commands.executeCommand("datapassFabric.checkTemplateStatus");
     } else if (command === "next") {
       const manifest = await readManifest();
       const next = manifest ? getProgress(manifest).next : undefined;
