@@ -17,17 +17,20 @@ For private/unpublished builds, Datapass currently integrates through the **comm
 
 That means we do **not** spoof an approved satellite identity and we do **not** fork the core extension. If Datapass is allow-listed later, the direct service-collection integration can be added behind the same adapter.
 
-## V0.5
+## V0.6
 
 The extension now provides:
 
 - a **Datapass Fabric** Activity Bar entry;
+- project-template selection with **Foil\'o real-time** and **Contoso batch/Data Factory** starter architectures;
+- template identity/version persisted in `fabric.project.json` for safe future evolution;
 - a native VS Code **Project Checklist** grouped by project phase;
 - project-level progress percentage, a dependency-aware **Next** action, and a **Ready now** set;
 - task actions for **open/start**, **in progress**, **done**, **blocked**, and **todo**;
 - explicit task dependencies so the Foil’o path teaches sequencing such as Eventstream → Bronze → Silver → Gold → semantic model → Power BI;
 - explicit task-to-resource links for workspace, Eventstream, Eventhouse, Lakehouse, medallion notebooks, semantic model, report and deployment pipeline;
-- consistency validation that flags missing linked resources and dependency/sequencing violations;
+- consistency validation that flags missing linked resources, duplicate task IDs, unknown dependencies, dependency cycles and dependency/sequencing violations;
+- runtime manifest validation that refuses to overwrite invalid `fabric.project.json` state;
 - one-click capture/update of the Fabric resource linked to a checklist task;
 - prompts to keep task state and resource state synchronized;
 - upstream Fabric command handoff with portal fallback;
@@ -37,6 +40,7 @@ The extension now provides:
 - a first **Foil'o real-time wind telemetry** project template;
 - automatic **`FABRIC_HANDOFF.md`** export for ChatGPT/Codex/Copilot, including validation findings;
 - a React **Toolbox** webview with current-project status;
+- a searchable, backend-driven catalog of verified Fabric Toolbox monitoring, migration, BI, RTI, development and MCP assets;
 - Microsoft Fabric and FabricStudio detection;
 - guided **Fabric Security Audit** UI that runs the existing local Toolbox PowerShell script;
 - guided **Fabric Assessment Tool** command UI for Synapse/Databricks assessment;
@@ -181,3 +185,47 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 3. Expand monitoring/deployment tool adapters selectively.
 4. Add project template selection and then a Contoso batch/medallion template.
 5. Revisit direct Fabric satellite registration only if Microsoft exposes a supported path for this extension ID.
+
+## Project templates
+
+### Foil'o Wind — Real-time Fabric
+
+```text
+Oracle VM / Kafka
+        |
+        v
+Eventstream
+   |        \
+   v         v
+Eventhouse  Lakehouse
+               |
+        Bronze -> Silver -> Gold
+                          |
+                     Semantic Model
+                          |
+                       Power BI
+```
+
+Use this path for Eventstream, Eventhouse/KQL, real-time telemetry and the wind-turbine simulator.
+
+### Contoso — Batch Data Factory
+
+```text
+Contoso generator / files / SQL
+              |
+              v
+       Fabric Data Pipeline
+              |
+              v
+          Lakehouse
+     Bronze -> Silver -> Gold
+              |
+              v
+          Warehouse
+              |
+       Semantic Model
+              |
+           Power BI
+```
+
+Use this path for Data Factory/Pipeline, batch ingestion, Lakehouse + Warehouse, medallion transformations and BI.
