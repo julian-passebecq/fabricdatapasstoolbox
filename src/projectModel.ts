@@ -48,7 +48,7 @@ export interface ProjectProgress {
 }
 
 export interface ProjectIssue {
-  code: "done_resource_missing" | "dependency_incomplete";
+  code: "done_resource_missing" | "dependency_incomplete" | "dependency_missing" | "dependency_cycle" | "duplicate_task_id";
   taskId: string;
   resourceKey?: string;
   dependencyId?: string;
@@ -220,19 +220,29 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
   };
 }
 
+export function getUnmetDependencyIds(
+  manifest: FabricProjectManifest,
+  task: FabricTask
+): string[] {
+  const tasksById = new Map(manifest.tasks.map(candidate => [candidate.id, candidate]));
+  return (task.dependsOn ?? []).filter(
+    dependencyId => tasksById.get(dependencyId)?.status !== "done"
+  );
+}
+
 export function getUnmetDependencies(
   manifest: FabricProjectManifest,
   task: FabricTask
 ): FabricTask[] {
   const tasksById = new Map(manifest.tasks.map(candidate => [candidate.id, candidate]));
-  return (task.dependsOn ?? [])
+  return getUnmetDependencyIds(manifest, task)
     .map(dependencyId => tasksById.get(dependencyId))
-    .filter((dependency): dependency is FabricTask => dependency !== undefined && dependency.status !== "done");
+    .filter((dependency): dependency is FabricTask => dependency !== undefined);
 }
 
 export function getReadyTasks(manifest: FabricProjectManifest): FabricTask[] {
   return manifest.tasks.filter(
-    task => task.status !== "done" && getUnmetDependencies(manifest, task).length === 0
+    task => task.status !== "done" && getUnmetDependencyIds(manifest, task).length === 0
   );
 }
 
@@ -257,8 +267,18 @@ export function getProgress(manifest: FabricProjectManifest): ProjectProgress {
 export function getProjectIssues(manifest: FabricProjectManifest): ProjectIssue[] {
   const tasksById = new Map(manifest.tasks.map(task => [task.id, task]));
   const issues: ProjectIssue[] = [];
+  const seenTaskIds = new Set<string>();
 
   for (const task of manifest.tasks) {
+    if (seenTaskIds.has(task.id)) {
+      issues.push({
+        code: "duplicate_task_id",
+        taskId: task.id,
+        message: `Task id "${task.id}" appears more than once.`
+      });
+    }
+    seenTaskIds.add(task.id);
+
     if (task.status === "done" && task.resourceKey && !manifest.resources[task.resourceKey]) {
       issues.push({
         code: "done_resource_missing",
@@ -268,19 +288,39 @@ export function getProjectIssues(manifest: FabricProjectManifest): ProjectIssue[
       });
     }
 
-    if (task.status === "done" || task.status === "in_progress") {
-      for (const dependencyId of task.dependsOn ?? []) {
-        const dependency = tasksById.get(dependencyId);
-        if (!dependency || dependency.status !== "done") {
-          issues.push({
-            code: "dependency_incomplete",
-            taskId: task.id,
-            dependencyId,
-            message: `Task "${task.title}" is ${task.status.replace("_", " ")} but dependency "${dependency?.title ?? dependencyId}" is not done.`
-          });
-        }
+    for (const dependencyId of task.dependsOn ?? []) {
+      const dependency = tasksById.get(dependencyId);
+      if (!dependency) {
+        issues.push({
+          code: "dependency_missing",
+          taskId: task.id,
+          dependencyId,
+          message: `Task "${task.title}" references unknown dependency "${dependencyId}".`
+        });
+        continue;
+      }
+
+      if (
+        (task.status === "done" || task.status === "in_progress") &&
+        dependency.status !== "done"
+      ) {
+        issues.push({
+          code: "dependency_incomplete",
+          taskId: task.id,
+          dependencyId,
+          message: `Task "${task.title}" is ${task.status.replace("_", " ")} but dependency "${dependency.title}" is not done.`
+        });
       }
     }
+  }
+
+  const cycle = findDependencyCycle(manifest);
+  if (cycle) {
+    issues.push({
+      code: "dependency_cycle",
+      taskId: cycle[0],
+      message: `Dependency cycle detected: ${cycle.join(" -> ")}.`
+    });
   }
 
   return issues;
@@ -361,4 +401,123 @@ ${manifest.decisions.map(item => `- **${item.decision}** — ${item.reason}`).jo
 ## Machine-readable state
 The authoritative state is \`${MANIFEST_NAME}\`. Read that JSON before changing this project.
 `;
+}
+
+
+export function validateManifestDocument(value: unknown): string[] {
+  if (!isRecord(value)) {
+    return ["Manifest root must be a JSON object."];
+  }
+
+  const errors: string[] = [];
+  if (value.schemaVersion !== 1) {
+    errors.push(`Unsupported schemaVersion: ${String(value.schemaVersion)}. Expected 1.`);
+  }
+
+  if (!isRecord(value.project)) {
+    errors.push("project must be an object.");
+  } else {
+    for (const key of ["name", "type", "environment", "createdAt", "updatedAt"]) {
+      if (typeof value.project[key] !== "string" || !value.project[key]) {
+        errors.push(`project.${key} must be a non-empty string.`);
+      }
+    }
+  }
+
+  if (!isRecord(value.architecture)) {
+    errors.push("architecture must be an object.");
+  } else {
+    for (const key of ["source", "ingestion", "storage", "layers", "serving"]) {
+      if (!Array.isArray(value.architecture[key]) ||
+          !value.architecture[key].every(item => typeof item === "string")) {
+        errors.push(`architecture.${key} must be an array of strings.`);
+      }
+    }
+  }
+
+  if (!isRecord(value.resources)) {
+    errors.push("resources must be an object.");
+  }
+
+  if (!Array.isArray(value.tasks)) {
+    errors.push("tasks must be an array.");
+  } else {
+    const statuses = new Set<TaskStatus>(["todo", "in_progress", "done", "blocked"]);
+    value.tasks.forEach((rawTask, index) => {
+      if (!isRecord(rawTask)) {
+        errors.push(`tasks[${index}] must be an object.`);
+        return;
+      }
+
+      for (const key of ["id", "title", "phase"]) {
+        if (typeof rawTask[key] !== "string" || !rawTask[key]) {
+          errors.push(`tasks[${index}].${key} must be a non-empty string.`);
+        }
+      }
+
+      if (typeof rawTask.status !== "string" || !statuses.has(rawTask.status as TaskStatus)) {
+        errors.push(`tasks[${index}].status is invalid.`);
+      }
+
+      if (rawTask.dependsOn !== undefined &&
+          (!Array.isArray(rawTask.dependsOn) ||
+           !rawTask.dependsOn.every(item => typeof item === "string"))) {
+        errors.push(`tasks[${index}].dependsOn must be an array of strings.`);
+      }
+    });
+  }
+
+  if (!Array.isArray(value.decisions)) {
+    errors.push("decisions must be an array.");
+  }
+
+  return errors;
+}
+
+function findDependencyCycle(manifest: FabricProjectManifest): string[] | undefined {
+  const tasksById = new Map(manifest.tasks.map(task => [task.id, task]));
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+  const stack: string[] = [];
+
+  const visit = (taskId: string): string[] | undefined => {
+    if (visiting.has(taskId)) {
+      const start = stack.indexOf(taskId);
+      return [...stack.slice(start), taskId];
+    }
+    if (visited.has(taskId)) {
+      return undefined;
+    }
+
+    const task = tasksById.get(taskId);
+    if (!task) {
+      return undefined;
+    }
+
+    visiting.add(taskId);
+    stack.push(taskId);
+    for (const dependencyId of task.dependsOn ?? []) {
+      const cycle = visit(dependencyId);
+      if (cycle) {
+        return cycle;
+      }
+    }
+    stack.pop();
+    visiting.delete(taskId);
+    visited.add(taskId);
+    return undefined;
+  };
+
+  for (const task of manifest.tasks) {
+    const cycle = visit(task.id);
+    if (cycle) {
+      return cycle;
+    }
+  }
+
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
