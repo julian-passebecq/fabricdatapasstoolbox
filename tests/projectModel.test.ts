@@ -7,6 +7,7 @@ import {
   getReadyTasks,
   getUnmetDependencies,
   renderHandoff,
+  transitionTaskStatus,
   validateManifestDocument
 } from "../src/projectModel";
 
@@ -178,4 +179,37 @@ test("project issues catch dependency cycles", () => {
 
   assert.ok(issues.some(issue => issue.code === "dependency_cycle"));
   assert.equal(getReadyTasks(manifest).length, 0);
+});
+
+
+test("task status transitions record auditable timestamps", () => {
+  const manifest = defaultFoilManifest("2026-09-22T00:00:00.000Z");
+  const task = manifest.tasks.find(item => item.id === "fabric-login")!;
+
+  transitionTaskStatus(task, "in_progress", "2026-09-22T10:00:00.000Z");
+  assert.equal(task.status, "in_progress");
+  assert.equal(task.statusChangedAt, "2026-09-22T10:00:00.000Z");
+  assert.equal(task.completedAt, undefined);
+
+  transitionTaskStatus(task, "done", "2026-09-22T10:05:00.000Z");
+  assert.equal(task.completedAt, "2026-09-22T10:05:00.000Z");
+  assert.equal(task.statusChangedAt, "2026-09-22T10:05:00.000Z");
+
+  transitionTaskStatus(task, "todo", "2026-09-22T10:10:00.000Z");
+  assert.equal(task.completedAt, undefined);
+  assert.equal(task.statusChangedAt, "2026-09-22T10:10:00.000Z");
+});
+
+test("handoff includes recent task activity when transitions were recorded", () => {
+  const manifest = defaultFoilManifest("2026-09-22T00:00:00.000Z");
+  const task = manifest.tasks.find(item => item.id === "fabric-login")!;
+  transitionTaskStatus(task, "done", "2026-09-22T10:05:00.000Z");
+
+  const handoff = renderHandoff(manifest);
+
+  assert.match(handoff, /## Recent task activity/);
+  assert.match(
+    handoff,
+    /2026-09-22T10:05:00.000Z — Sign in to Microsoft Fabric: done/
+  );
 });
