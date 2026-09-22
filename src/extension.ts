@@ -4,12 +4,12 @@ import { openFabricHome, runTaskTarget } from "./fabricIntegration";
 import {
   exportHandoff,
   getProgress,
+  getProjectIssues,
   initializeFoilProject,
   manifestUri,
   readManifest,
   setTaskStatus,
   TaskStatus,
-  toggleTask,
   upsertResource
 } from "./projectState";
 import { captureResource } from "./resourceCapture";
@@ -23,6 +23,64 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const refreshAll = (): void => {
     checklist.refresh();
     void toolbox.refresh();
+  };
+
+  const recordLinkedResource = async (
+    taskId: string,
+    resourceKey: string,
+    promptToComplete: boolean
+  ): Promise<boolean> => {
+    const captured = await captureResource(resourceKey);
+    if (!captured) {
+      return false;
+    }
+
+    await upsertResource(captured.key, captured.value);
+
+    if (promptToComplete) {
+      const action = await vscode.window.showInformationMessage(
+        `Recorded ${resourceKey}. Mark the linked checklist task done?`,
+        "Mark task done",
+        "Keep current status"
+      );
+      if (action === "Mark task done") {
+        await setTaskStatus(taskId, "done");
+      }
+    }
+
+    refreshAll();
+    return true;
+  };
+
+  const completeTaskWithResourceGuard = async (
+    taskId: string
+  ): Promise<void> => {
+    const manifest = await readManifest();
+    const task = manifest?.tasks.find(item => item.id === taskId);
+    if (!manifest || !task) {
+      void vscode.window.showWarningMessage("Checklist task not found.");
+      return;
+    }
+
+    if (task.resourceKey && !manifest.resources[task.resourceKey]) {
+      const action = await vscode.window.showWarningMessage(
+        `No "${task.resourceKey}" resource is recorded for "${task.title}".`,
+        "Record resource",
+        "Mark done anyway"
+      );
+
+      if (action === "Record resource") {
+        const recorded = await recordLinkedResource(task.id, task.resourceKey, false);
+        if (!recorded) {
+          return;
+        }
+      } else if (action !== "Mark done anyway") {
+        return;
+      }
+    }
+
+    await setTaskStatus(task.id, "done");
+    refreshAll();
   };
 
   context.subscriptions.push(
@@ -73,10 +131,54 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       await upsertResource(captured.key, captured.value);
+      const linkedTask = manifest.tasks.find(
+        task => task.resourceKey === captured.key && task.status !== "done"
+      );
+
+      if (linkedTask) {
+        const action = await vscode.window.showInformationMessage(
+          `Recorded ${captured.key}. Mark "${linkedTask.title}" done?`,
+          "Mark task done",
+          "Keep current status"
+        );
+        if (action === "Mark task done") {
+          await setTaskStatus(linkedTask.id, "done");
+        }
+      }
+
       refreshAll();
       void vscode.window.showInformationMessage(
         `Recorded ${captured.key} in fabric.project.json.`
       );
+    }),
+
+    vscode.commands.registerCommand("datapassFabric.validateProject", async () => {
+      const manifest = await readManifest();
+      if (!manifest) {
+        void vscode.window.showWarningMessage("Initialize a Fabric project first.");
+        return;
+      }
+
+      const issues = getProjectIssues(manifest);
+      if (issues.length === 0) {
+        void vscode.window.showInformationMessage(
+          "Project state is consistent: no completed task is missing its linked Fabric resource."
+        );
+        return;
+      }
+
+      const first = issues[0];
+      const action = await vscode.window.showWarningMessage(
+        `${issues.length} project-state issue${issues.length === 1 ? "" : "s"} detected. ${first.message}`,
+        "Open task",
+        "Open manifest"
+      );
+
+      if (action === "Open task") {
+        await vscode.commands.executeCommand("datapassFabric.taskAction", first.taskId);
+      } else if (action === "Open manifest") {
+        await vscode.commands.executeCommand("datapassFabric.openManifest");
+      }
     }),
 
     vscode.commands.registerCommand("datapassFabric.taskAction", async (taskId: string) => {
@@ -87,36 +189,47 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      const choice = await vscode.window.showQuickPick(
-        [
-          {
-            label: "$(play) Open / start this step",
-            id: "open",
-            description: task.target ? `Target: ${task.target}` : undefined,
-            detail: task.description
-          },
-          {
-            label: "$(sync) Mark in progress",
-            id: "in_progress"
-          },
-          {
-            label: "$(check) Mark done",
-            id: "done"
-          },
-          {
-            label: "$(error) Mark blocked",
-            id: "blocked"
-          },
-          {
-            label: "$(circle-large-outline) Reset to todo",
-            id: "todo"
-          }
-        ],
+      const resourceRecorded = task.resourceKey
+        ? Boolean(manifest.resources[task.resourceKey])
+        : false;
+
+      const actions = [
         {
-          title: task.title,
-          placeHolder: `${task.phase} · current status: ${task.status}`
+          label: "$(play) Open / start this step",
+          id: "open",
+          description: task.target ? `Target: ${task.target}` : undefined,
+          detail: task.description
+        },
+        ...(task.resourceKey
+          ? [{
+              label: resourceRecorded
+                ? `$(database) Update linked resource: ${task.resourceKey}`
+                : `$(database) Record linked resource: ${task.resourceKey}`,
+              id: "resource"
+            }]
+          : []),
+        {
+          label: "$(sync) Mark in progress",
+          id: "in_progress"
+        },
+        {
+          label: "$(check) Mark done",
+          id: "done"
+        },
+        {
+          label: "$(error) Mark blocked",
+          id: "blocked"
+        },
+        {
+          label: "$(circle-large-outline) Reset to todo",
+          id: "todo"
         }
-      );
+      ];
+
+      const choice = await vscode.window.showQuickPick(actions, {
+        title: task.title,
+        placeHolder: `${task.phase} · current status: ${task.status}`
+      });
 
       if (!choice) {
         return;
@@ -132,13 +245,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
+      if (choice.id === "resource" && task.resourceKey) {
+        await recordLinkedResource(task.id, task.resourceKey, task.status !== "done");
+        return;
+      }
+
+      if (choice.id === "done") {
+        await completeTaskWithResourceGuard(task.id);
+        return;
+      }
+
       await setTaskStatus(task.id, choice.id as TaskStatus);
       refreshAll();
     }),
 
     vscode.commands.registerCommand("datapassFabric.toggleTask", async (taskId: string) => {
-      await toggleTask(taskId);
-      refreshAll();
+      const manifest = await readManifest();
+      const task = manifest?.tasks.find(item => item.id === taskId);
+      if (!manifest || !task) {
+        void vscode.window.showWarningMessage("Checklist task not found.");
+        return;
+      }
+
+      if (task.status === "done") {
+        await setTaskStatus(task.id, "todo");
+        refreshAll();
+        return;
+      }
+
+      await completeTaskWithResourceGuard(task.id);
     }),
 
     vscode.commands.registerCommand("datapassFabric.showProjectSummary", async () => {
@@ -149,11 +284,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       const progress = getProgress(manifest);
+      const issues = getProjectIssues(manifest);
       const next = progress.next?.title ?? "Checklist complete";
       const resources = Object.keys(manifest.resources).length;
+      const issueText = issues.length
+        ? `, ${issues.length} validation issue${issues.length === 1 ? "" : "s"}`
+        : "";
       const action = await vscode.window.showInformationMessage(
-        `${manifest.project.name}: ${progress.done}/${progress.total} complete (${progress.percent}%), ${resources} resources recorded. Next: ${next}.`,
+        `${manifest.project.name}: ${progress.done}/${progress.total} complete (${progress.percent}%), ${resources} resources recorded${issueText}. Next: ${next}.`,
         "Record resource",
+        "Validate",
         "Open manifest",
         "Export AI handoff",
         "Open Fabric"
@@ -161,6 +301,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       if (action === "Record resource") {
         await vscode.commands.executeCommand("datapassFabric.recordResource");
+      } else if (action === "Validate") {
+        await vscode.commands.executeCommand("datapassFabric.validateProject");
       } else if (action === "Open manifest") {
         await vscode.commands.executeCommand("datapassFabric.openManifest");
       } else if (action === "Export AI handoff") {

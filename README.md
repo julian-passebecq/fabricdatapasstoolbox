@@ -17,7 +17,7 @@ For private/unpublished builds, Datapass currently integrates through the **comm
 
 That means we do **not** spoof an approved satellite identity and we do **not** fork the core extension. If Datapass is allow-listed later, the direct service-collection integration can be added behind the same adapter.
 
-## V0.4
+## V0.5
 
 The extension now provides:
 
@@ -25,12 +25,16 @@ The extension now provides:
 - a native VS Code **Project Checklist** grouped by project phase;
 - project-level progress percentage and a computed **Next** action;
 - task actions for **open/start**, **in progress**, **done**, **blocked**, and **todo**;
+- explicit task-to-resource links for workspace, Eventstream, Eventhouse, Lakehouse, medallion notebooks, semantic model, report and deployment pipeline;
+- consistency validation that flags a completed task when its linked Fabric resource is not recorded;
+- one-click capture/update of the Fabric resource linked to a checklist task;
+- prompts to keep task state and resource state synchronized;
 - upstream Fabric command handoff with portal fallback;
 - persisted **`fabric.project.json`** project state with JSON schema validation;
 - manual **Fabric resource capture** (workspace, Eventstream, Eventhouse, Lakehouse, notebooks, semantic model, report, deployment pipeline);
 - GUID extraction from pasted Fabric item URLs;
 - a first **Foil'o real-time wind telemetry** project template;
-- automatic **`FABRIC_HANDOFF.md`** export for ChatGPT/Codex/Copilot;
+- automatic **`FABRIC_HANDOFF.md`** export for ChatGPT/Codex/Copilot, including validation findings;
 - a React **Toolbox** webview with current-project status;
 - Microsoft Fabric and FabricStudio detection;
 - guided **Fabric Security Audit** UI that runs the existing local Toolbox PowerShell script;
@@ -77,11 +81,23 @@ npm run package
 
 Marketplace publication is not required for personal use; install the generated VSIX directly in VS Code.
 
-## Resource inventory
+## Resource inventory and task linkage
 
 Use **Datapass Fabric: Record Fabric Resource** or the database icon on the checklist view.
 
-You can paste either a GUID or a Fabric item URL. Datapass records the name, extracted ID, and original URL in `fabric.project.json`. This gives ChatGPT/Codex enough state to understand which concrete Fabric items already exist.
+You can paste either a GUID or a Fabric item URL. Datapass records the name, extracted ID, and original URL in `fabric.project.json`.
+
+Foil'o tasks also declare the resource they expect. For example:
+
+```json
+{
+  "id": "lakehouse",
+  "title": "Create Lakehouse",
+  "resourceKey": "lakehouse"
+}
+```
+
+If a linked task is marked done without the resource being recorded, the checklist shows a warning and **Datapass Fabric: Validate Project State** reports the inconsistency. This makes the manifest more reliable as an AI handoff.
 
 ## Local Fabric Toolbox
 
@@ -136,6 +152,7 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 - in-progress work;
 - remaining checklist tasks;
 - known Fabric resource names/IDs/URLs;
+- task/resource validation findings;
 - architectural decisions.
 
 ## What we do not duplicate
@@ -158,7 +175,7 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 ## Next gates
 
 1. Install the CI-generated VSIX in VS Code and verify the interaction flow against a real Fabric tenant.
-2. Add task-to-resource linkage so completing "Create Lakehouse", for example, can prompt to record the Lakehouse immediately.
-3. Add richer task-specific deep links and validation.
-4. Expand monitoring/deployment tool adapters selectively.
-5. Add a second project template (Contoso batch/medallion) after the Foil'o path is stable.
+2. Add richer task-specific deep links and validation for Eventstream/Eventhouse/Lakehouse.
+3. Expand monitoring/deployment tool adapters selectively.
+4. Add project template selection and then a Contoso batch/medallion template.
+5. Revisit direct Fabric satellite registration only if Microsoft exposes a supported path for this extension ID.

@@ -26,17 +26,28 @@ const resourceChoices: ResourceChoice[] = [
   { key: "deployment-pipeline", label: "$(debug-step-over) Deployment pipeline", description: "Promotion / CI-CD" }
 ];
 
-export async function captureResource(): Promise<CapturedResource | undefined> {
-  const choice = await vscode.window.showQuickPick(resourceChoices, {
-    title: "Record Fabric resource",
-    placeHolder: "Choose the resource type to store in fabric.project.json"
-  });
+export async function captureResource(expectedKey?: string): Promise<CapturedResource | undefined> {
+  let choice: ResourceChoice | undefined;
+
+  if (expectedKey) {
+    choice = resourceChoices.find(item => item.key === expectedKey);
+    if (!choice) {
+      throw new Error(`Unknown Fabric resource type: ${expectedKey}`);
+    }
+  } else {
+    choice = await vscode.window.showQuickPick(resourceChoices, {
+      title: "Record Fabric resource",
+      placeHolder: "Choose the resource type to store in fabric.project.json"
+    });
+  }
+
   if (!choice) {
     return undefined;
   }
 
+  const displayLabel = choice.label.replace(/^\$\([^)]*\)\s*/, "");
   const name = await vscode.window.showInputBox({
-    title: `Record ${choice.label.replace(/^\$\([^)]*\)\s*/, "")}`,
+    title: `Record ${displayLabel}`,
     prompt: "Display name (recommended)",
     placeHolder: "foil-dev"
   });

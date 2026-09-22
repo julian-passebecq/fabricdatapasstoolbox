@@ -2,7 +2,7 @@
   "name": "fabric-datapass-toolbox",
   "displayName": "Datapass Fabric Toolbox",
   "description": "A thin Microsoft Fabric companion for guided projects, checklists, project state and selected Toolbox utilities.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "julian-passebecq",
   "license": "MIT",
   "repository": {
@@ -57,6 +57,12 @@
         "title": "Record Fabric Resource",
         "category": "Datapass Fabric",
         "icon": "$(database)"
+      },
+      {
+        "command": "datapassFabric.validateProject",
+        "title": "Validate Project State",
+        "category": "Datapass Fabric",
+        "icon": "$(check-all)"
       },
       {
         "command": "datapassFabric.taskAction",
@@ -149,9 +155,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "datapassFabric.exportHandoff",
+          "command": "datapassFabric.validateProject",
           "when": "view == datapassFabric.checklist",
           "group": "navigation@4"
+        },
+        {
+          "command": "datapassFabric.exportHandoff",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation@5"
         }
       ],
       "view/item/context": [

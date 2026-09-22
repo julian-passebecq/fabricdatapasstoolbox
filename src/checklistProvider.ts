@@ -3,6 +3,7 @@ import {
   FabricProjectManifest,
   FabricTask,
   getProgress,
+  getProjectIssues,
   readManifest
 } from "./projectState";
 
@@ -27,6 +28,7 @@ interface PhaseNode {
 interface TaskNode {
   kind: "task";
   task: FabricTask;
+  resourceRecorded: boolean;
 }
 
 interface InfoNode {
@@ -47,14 +49,15 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
     if (element.kind === "project") {
       const progress = getProgress(element.manifest);
       const resourceCount = Object.keys(element.manifest.resources).length;
+      const issues = getProjectIssues(element.manifest);
       const item = new vscode.TreeItem(
         element.manifest.project.name,
         vscode.TreeItemCollapsibleState.None
       );
-      item.iconPath = new vscode.ThemeIcon("graph");
-      item.description = `${progress.done}/${progress.total} · ${progress.percent}% · ${resourceCount} resources`;
+      item.iconPath = new vscode.ThemeIcon(issues.length ? "warning" : "graph");
+      item.description = `${progress.done}/${progress.total} · ${progress.percent}% · ${resourceCount} resources${issues.length ? ` · ${issues.length} issue${issues.length === 1 ? "" : "s"}` : ""}`;
       item.tooltip = new vscode.MarkdownString(
-        `**${element.manifest.project.name}**\n\nType: ${element.manifest.project.type}\n\nEnvironment: ${element.manifest.project.environment}\n\nProgress: ${progress.percent}%\n\nResources recorded: ${resourceCount}`
+        `**${element.manifest.project.name}**\n\nType: ${element.manifest.project.type}\n\nEnvironment: ${element.manifest.project.environment}\n\nProgress: ${progress.percent}%\n\nResources recorded: ${resourceCount}\n\nValidation issues: ${issues.length}`
       );
       item.command = {
         command: "datapassFabric.showProjectSummary",
@@ -96,20 +99,29 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
     }
 
     const task = element.task;
-    const icon = task.status === "done"
-      ? "pass-filled"
-      : task.status === "blocked"
-        ? "error"
-        : task.status === "in_progress"
-          ? "sync~spin"
-          : "circle-large-outline";
+    const inconsistent = task.status === "done" && Boolean(task.resourceKey) && !element.resourceRecorded;
+    const icon = inconsistent
+      ? "warning"
+      : task.status === "done"
+        ? "pass-filled"
+        : task.status === "blocked"
+          ? "error"
+          : task.status === "in_progress"
+            ? "sync~spin"
+            : "circle-large-outline";
+
+    const resourceDescription = task.resourceKey
+      ? element.resourceRecorded
+        ? " · resource recorded"
+        : " · resource missing"
+      : "";
 
     const item = new vscode.TreeItem(task.title, vscode.TreeItemCollapsibleState.None);
     item.iconPath = new vscode.ThemeIcon(icon);
     item.contextValue = "datapassFabric.task";
-    item.description = task.status.replace("_", " ");
+    item.description = `${task.status.replace("_", " ")}${resourceDescription}`;
     item.tooltip = new vscode.MarkdownString(
-      `**${task.phase}**\n\nStatus: ${task.status}\n\n${task.description ?? ""}`
+      `**${task.phase}**\n\nStatus: ${task.status}\n\n${task.description ?? ""}${task.resourceKey ? `\n\nLinked resource: **${task.resourceKey}** — ${element.resourceRecorded ? "recorded" : "missing"}` : ""}`
     );
     item.command = {
       command: "datapassFabric.taskAction",
@@ -145,7 +157,11 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
     }
 
     if (element.kind === "phase") {
-      return element.tasks.map(task => ({ kind: "task", task }));
+      return element.tasks.map(task => ({
+        kind: "task",
+        task,
+        resourceRecorded: task.resourceKey ? Boolean(manifest.resources[task.resourceKey]) : false
+      }));
     }
 
     return [];

@@ -9,6 +9,7 @@ export interface FabricTask {
   status: TaskStatus;
   description?: string;
   target?: "vscode" | "fabric" | "toolbox";
+  resourceKey?: string;
 }
 
 export interface FabricResource {
@@ -43,6 +44,13 @@ export interface ProjectProgress {
   total: number;
   percent: number;
   next?: FabricTask;
+}
+
+export interface ProjectIssue {
+  code: "done_resource_missing";
+  taskId: string;
+  resourceKey: string;
+  message: string;
 }
 
 export const MANIFEST_NAME = "fabric.project.json";
@@ -85,6 +93,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Foundation",
         status: "todo",
         target: "fabric",
+        resourceKey: "workspace",
         description: "Create the Foil'o development workspace or select the workspace that will own this project."
       },
       {
@@ -101,6 +110,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Ingestion",
         status: "todo",
         target: "fabric",
+        resourceKey: "eventstream",
         description: "Receive the wind-turbine event stream that will ultimately come from the Oracle VM / Kafka simulator."
       },
       {
@@ -109,6 +119,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Ingestion",
         status: "todo",
         target: "fabric",
+        resourceKey: "eventhouse",
         description: "Persist and query real-time telemetry through Eventhouse / KQL."
       },
       {
@@ -117,6 +128,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Medallion",
         status: "todo",
         target: "fabric",
+        resourceKey: "lakehouse",
         description: "Create the Lakehouse used for the Bronze, Silver and Gold learning path."
       },
       {
@@ -125,6 +137,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Medallion",
         status: "todo",
         target: "fabric",
+        resourceKey: "notebook-bronze",
         description: "Land raw telemetry with minimal transformation and enough metadata for replay/debugging."
       },
       {
@@ -133,6 +146,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Medallion",
         status: "todo",
         target: "fabric",
+        resourceKey: "notebook-silver",
         description: "Clean, type, deduplicate and enrich turbine telemetry into reusable analytical tables."
       },
       {
@@ -141,6 +155,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Medallion",
         status: "todo",
         target: "fabric",
+        resourceKey: "notebook-gold",
         description: "Create KPI-ready aggregates such as production, availability and turbine health summaries."
       },
       {
@@ -149,6 +164,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Serving",
         status: "todo",
         target: "fabric",
+        resourceKey: "semantic-model",
         description: "Model Gold data for reporting with explicit business measures and relationships."
       },
       {
@@ -157,6 +173,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Serving",
         status: "todo",
         target: "fabric",
+        resourceKey: "report",
         description: "Build the final operational/business report from the curated semantic layer."
       },
       {
@@ -173,6 +190,7 @@ export function defaultFoilManifest(): FabricProjectManifest {
         phase: "Operations",
         status: "todo",
         target: "toolbox",
+        resourceKey: "deployment-pipeline",
         description: "Define promotion and deployment flow once the development architecture is stable."
       }
     ],
@@ -305,11 +323,27 @@ export function getProgress(manifest: FabricProjectManifest): ProjectProgress {
   };
 }
 
+export function getProjectIssues(manifest: FabricProjectManifest): ProjectIssue[] {
+  return manifest.tasks.flatMap(task => {
+    if (task.status !== "done" || !task.resourceKey || manifest.resources[task.resourceKey]) {
+      return [];
+    }
+
+    return [{
+      code: "done_resource_missing" as const,
+      taskId: task.id,
+      resourceKey: task.resourceKey,
+      message: `Task "${task.title}" is done but resource "${task.resourceKey}" is not recorded.`
+    }];
+  });
+}
+
 export function renderHandoff(manifest: FabricProjectManifest): string {
   const completed = manifest.tasks.filter(task => task.status === "done");
   const current = manifest.tasks.filter(task => task.status === "in_progress");
   const remaining = manifest.tasks.filter(task => task.status === "todo" || task.status === "blocked");
   const progress = getProgress(manifest);
+  const issues = getProjectIssues(manifest);
   const architecture = [
     ...manifest.architecture.source,
     ...manifest.architecture.ingestion,
@@ -319,7 +353,14 @@ export function renderHandoff(manifest: FabricProjectManifest): string {
   ].join(" -> ");
 
   const taskLines = (tasks: FabricTask[]) => tasks.length
-    ? tasks.map(task => `- ${task.title} (${task.phase})`).join("\n")
+    ? tasks.map(task => {
+        const resourceState = task.resourceKey
+          ? manifest.resources[task.resourceKey]
+            ? ` · resource: ${task.resourceKey} recorded`
+            : ` · resource: ${task.resourceKey} missing`
+          : "";
+        return `- ${task.title} (${task.phase})${resourceState}`;
+      }).join("\n")
     : "- None";
 
   const resourceEntries = Object.entries(manifest.resources);
@@ -328,6 +369,10 @@ export function renderHandoff(manifest: FabricProjectManifest): string {
         .map(([key, value]) => `- **${key}**: ${value.name ?? "(unnamed)"}${value.id ? ` — ${value.id}` : ""}${value.notes ? ` — ${value.notes}` : ""}`)
         .join("\n")
     : "- None recorded yet";
+
+  const validation = issues.length
+    ? issues.map(issue => `- ${issue.message}`).join("\n")
+    : "- No task/resource consistency issues detected";
 
   return `# Fabric project handoff: ${manifest.project.name}
 
@@ -354,6 +399,9 @@ ${taskLines(remaining)}
 
 ## Resources
 ${resources}
+
+## Validation
+${validation}
 
 ## Decisions
 ${manifest.decisions.map(item => `- **${item.decision}** — ${item.reason}`).join("\n") || "- None"}

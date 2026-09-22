@@ -55,7 +55,8 @@
             "enum": ["todo", "in_progress", "done", "blocked"]
           },
           "description": { "type": "string" },
-          "target": { "enum": ["vscode", "fabric", "toolbox"] }
+          "target": { "enum": ["vscode", "fabric", "toolbox"] },
+          "resourceKey": { "type": "string", "minLength": 1 }
         },
         "additionalProperties": false
       }
