@@ -104,7 +104,7 @@ const emptyState: ExtensionState = {
 
 export function App(): React.JSX.Element {
   const [state, setState] = useState<ExtensionState>(emptyState);
-  const [activeTool, setActiveTool] = useState<"security" | "assessment" | "fabricMgmt" | null>(null);
+  const [activeTool, setActiveTool] = useState<"security" | "assessment" | "fabricMgmt" | "semanticAudit" | null>(null);
   const [securityUrl, setSecurityUrl] = useState("");
   const [securityUser, setSecurityUser] = useState("");
   const [assessmentSource, setAssessmentSource] = useState<"synapse" | "databricks">("synapse");
@@ -325,7 +325,12 @@ export function App(): React.JSX.Element {
                 <strong>{item.name}</strong>
                 <div className="catalogMeta">{item.category} · {item.surface}</div>
               </div>
-              <button className="secondary catalogAction" onClick={() => open(item.id)}>Open</button>
+              <button
+                className="secondary catalogAction"
+                onClick={() => item.id === "semanticAudit" ? setActiveTool("semanticAudit") : open(item.id)}
+              >
+                {item.id === "semanticAudit" ? "Guide" : "Open"}
+              </button>
             </div>
           ))}
         </div>
@@ -431,6 +436,58 @@ export function App(): React.JSX.Element {
           </div>
 
           <button className="linkButton" onClick={() => open("assessment")}>Open upstream source</button>
+        </section>
+      )}
+
+      {activeTool === "semanticAudit" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Semantic Model Audit</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            The upstream tool is a Fabric notebook plus a Power BI template. Datapass guides the setup instead of pretending it is a local CLI.
+          </p>
+
+          <div className="guideSteps">
+            <GuideStep
+              number="1"
+              title="Enable Workspace Monitoring"
+              text="The audit relies on Fabric workspace monitoring data for query and model history."
+            />
+            <GuideStep
+              number="2"
+              title="Import the audit notebook"
+              text="Open the upstream SemanticModelAudit assets and import the notebook into your Fabric workspace."
+            />
+            <GuideStep
+              number="3"
+              title="Attach a Lakehouse"
+              text="Attach the Lakehouse that will persist audit logs and star-schema history."
+            />
+            <GuideStep
+              number="4"
+              title="Choose semantic models"
+              text="Edit the notebook configuration cell with the models and audit options you want to inspect."
+            />
+            <GuideStep
+              number="5"
+              title="Run, verify, then schedule"
+              text="Run interactively first. Once output is correct, schedule repeated runs for useful history."
+            />
+            <GuideStep
+              number="6"
+              title="Connect the report template"
+              text="Use the supplied Power BI template against the generated audit tables."
+            />
+          </div>
+
+          <div className="buttonRow">
+            <button onClick={() => open("fabric")}>Open Fabric</button>
+            <button className="secondary" onClick={() => command("recordResource")}>Record resource</button>
+          </div>
+          <button className="linkButton" onClick={() => open("semanticAudit")}>Open upstream audit assets</button>
         </section>
       )}
 
@@ -615,6 +672,22 @@ function ManagementAction(props: {
       <div className="managementButtons">
         <button className="secondary" onClick={props.onCopy}>Copy</button>
         <button onClick={props.onRun}>Run</button>
+      </div>
+    </div>
+  );
+}
+
+function GuideStep(props: {
+  number: string;
+  title: string;
+  text: string;
+}): React.JSX.Element {
+  return (
+    <div className="guideStep">
+      <span className="guideNumber">{props.number}</span>
+      <div>
+        <strong>{props.title}</strong>
+        <p>{props.text}</p>
       </div>
     </div>
   );
