@@ -2,7 +2,7 @@
   "name": "fabric-datapass-toolbox",
   "displayName": "Datapass Fabric Toolbox",
   "description": "A thin Microsoft Fabric companion for guided projects, checklists, project state and selected Toolbox utilities.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "julian-passebecq",
   "license": "MIT",
   "repository": {
@@ -137,7 +137,7 @@
     "viewsWelcome": [
       {
         "view": "datapassFabric.checklist",
-        "contents": "No Datapass Fabric project found.\n[Initialize Foil'o project](command:datapassFabric.initializeProject)"
+        "contents": "No Datapass Fabric project found.\n[Choose project template](command:datapassFabric.initializeProject)"
       }
     ],
     "menus": {
