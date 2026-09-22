@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { getWorkspaceRoot } from "./projectState";
+import { buildFabricMgmtCommand, FabricMgmtCommandInput, FabricMgmtOperation } from "./fabricMgmtCommands";
 
 const SECURITY_RELATIVE_PATH = path.join(
   "tools",
@@ -106,6 +107,29 @@ export async function runAssessment(input: {
   const terminal = vscode.window.createTerminal({
     name: "Fabric Assessment Tool",
     shellPath: powerShellExecutable()
+  });
+  terminal.show(true);
+  terminal.sendText(command, true);
+  return command;
+}
+
+export async function copyFabricMgmtCommand(
+  operation: FabricMgmtOperation,
+  input: FabricMgmtCommandInput = {}
+): Promise<string> {
+  const command = buildFabricMgmtCommand(operation, input);
+  await vscode.env.clipboard.writeText(command);
+  return command;
+}
+
+export async function runFabricMgmtCommand(
+  operation: FabricMgmtOperation,
+  input: FabricMgmtCommandInput = {}
+): Promise<string> {
+  const command = buildFabricMgmtCommand(operation, input);
+  const terminal = vscode.window.createTerminal({
+    name: "Microsoft Fabric Management",
+    shellPath: "pwsh"
   });
   terminal.show(true);
   terminal.sendText(command, true);
