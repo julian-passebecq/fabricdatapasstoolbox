@@ -435,3 +435,21 @@ code {
   color: var(--vscode-descriptionForeground);
   font-size: 10px;
 }
+
+
+.templateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.templateRow .templateMeta {
+  flex: 1;
+}
+
+button.templateCheck {
+  width: auto;
+  padding: 3px 7px;
+  font-size: 9px;
+}
