@@ -478,3 +478,37 @@ button.templateCheck {
   color: var(--vscode-descriptionForeground);
   overflow-wrap: anywhere;
 }
+
+
+.managementGrid {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.managementAction {
+  padding: 9px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 5px;
+  background: var(--vscode-editorWidget-background);
+}
+
+.managementAction > strong {
+  font-size: 11px;
+}
+
+.managementAction p {
+  margin: 5px 0 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+}
+
+.managementButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.managementButtons button {
+  padding: 6px 8px;
+}
