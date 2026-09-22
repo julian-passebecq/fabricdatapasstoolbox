@@ -113,6 +113,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
             workspaceId: message.workspaceId ? String(message.workspaceId) : undefined
           };
           const allowed = new Set([
+            "status",
             "install",
             "connect",
             "workspaces",
