@@ -17,7 +17,7 @@ For private/unpublished builds, Datapass currently integrates through the **comm
 
 That means we do **not** spoof an approved satellite identity and we do **not** fork the core extension. If Datapass is allow-listed later, the direct service-collection integration can be added behind the same adapter.
 
-## V0.6
+## V0.7
 
 The extension now provides:
 
@@ -44,6 +44,11 @@ The extension now provides:
 - Microsoft Fabric and FabricStudio detection;
 - guided **Fabric Security Audit** UI that runs the existing local Toolbox PowerShell script;
 - guided **Fabric Assessment Tool** command UI for Synapse/Databricks assessment;
+- guided **MicrosoftFabricMgmt** PowerShell 7 UI with explicit module check/install, interactive tenant login, workspace listing and Lakehouse/Warehouse/Data Pipeline inspection;
+- guided **Semantic Model Audit** setup flow for the upstream Fabric notebook + Power BI template;
+- secure **Lineage Extractor** prerequisite guide that never asks Datapass for client secrets;
+- task status audit timestamps and Fabric resource first-recorded/last-updated evidence in `fabric.project.json`;
+- recent checklist activity in the React dashboard and AI handoff;
 - optional MCP workspace status and `.vscode/mcp.json` creation;
 - GitHub Actions typecheck/build/VSIX packaging.
 
@@ -140,6 +145,24 @@ fat
 
 You can override it with `datapassFabric.assessmentCommand`; executable paths with spaces are supported.
 
+## MicrosoftFabricMgmt
+
+The React Toolbox includes a guided PowerShell 7 front end for the upstream `MicrosoftFabricMgmt` module. It generates or explicitly runs:
+
+- module status checks;
+- `Install-Module -Name MicrosoftFabricMgmt -Scope CurrentUser`;
+- interactive `Connect-FabricAccount -TenantId ...`;
+- `Get-FabricWorkspace`;
+- workspace-scoped Lakehouse, Warehouse and Data Pipeline listing.
+
+Datapass does not collect or persist passwords, client secrets or service-principal credentials.
+
+## Notebook-based guided tools
+
+**Semantic Model Audit** is treated as a Fabric notebook + Power BI template workflow, not as a fake local CLI. The guide covers Workspace Monitoring, notebook import, Lakehouse attachment, model selection, scheduling and report-template connection.
+
+**Lineage Extractor** is exposed as a prerequisite/setup guide. Datapass intentionally provides no client-secret fields; production credentials should remain outside notebooks/source control in an appropriate secret store.
+
 ## MCP
 
 MCP is optional. Datapass can open/create a workspace `.vscode/mcp.json` with an empty `servers` object and reports whether workspace or portable `.mcp.json` configuration exists. It does not auto-install or trust any MCP server.
@@ -157,7 +180,8 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 - completed work;
 - in-progress work;
 - remaining checklist tasks;
-- known Fabric resource names/IDs/URLs;
+- known Fabric resource names/IDs/URLs plus evidence timestamps;
+- recent task status transitions;
 - task/resource validation findings;
 - architectural decisions.
 
@@ -180,10 +204,10 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 
 ## Next gates
 
-1. Install the CI-generated VSIX in VS Code and verify the interaction flow against a real Fabric tenant.
-2. Add richer task-specific deep links and validation for Eventstream/Eventhouse/Lakehouse.
-3. Expand monitoring/deployment tool adapters selectively.
-4. Add project template selection and then a Contoso batch/medallion template.
+1. Install the CI-generated VSIX in VS Code and exercise Foil'o + Contoso against a real Fabric tenant.
+2. Add deeper task-specific navigation/validation for Eventstream, Eventhouse, Lakehouse, Data Pipeline and Warehouse resources.
+3. Add read-only runtime status for selected monitoring/deployment assets where stable upstream interfaces exist.
+4. Add safe, explicit project-template migrations only when a template version actually changes.
 5. Revisit direct Fabric satellite registration only if Microsoft exposes a supported path for this extension ID.
 
 ## Project templates
