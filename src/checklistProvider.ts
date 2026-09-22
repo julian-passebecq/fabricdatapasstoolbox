@@ -121,7 +121,7 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
     item.contextValue = "datapassFabric.task";
     item.description = `${task.status.replace("_", " ")}${resourceDescription}`;
     item.tooltip = new vscode.MarkdownString(
-      `**${task.phase}**\n\nStatus: ${task.status}\n\n${task.description ?? ""}${task.resourceKey ? `\n\nLinked resource: **${task.resourceKey}** — ${element.resourceRecorded ? "recorded" : "missing"}` : ""}`
+      `**${task.phase}**\n\nStatus: ${task.status}\n\n${task.description ?? ""}${task.dependsOn?.length ? `\n\nDepends on: ${task.dependsOn.join(", ")}` : ""}${task.resourceKey ? `\n\nLinked resource: **${task.resourceKey}** — ${element.resourceRecorded ? "recorded" : "missing"}` : ""}`
     );
     item.command = {
       command: "datapassFabric.taskAction",
