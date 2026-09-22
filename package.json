@@ -12,7 +12,10 @@
   "engines": {
     "vscode": "^1.96.0"
   },
-  "categories": ["Data Science", "Other"],
+  "categories": [
+    "Data Science",
+    "Other"
+  ],
   "activationEvents": [
     "onView:datapassFabric.checklist",
     "onView:datapassFabric.toolbox",
@@ -190,7 +193,9 @@
     "build": "npm run clean && node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "check": "tsc --noEmit",
-    "package": "npm run check && npm run build && vsce package"
+    "test": "tsx --test tests/projectModel.test.ts",
+    "verify": "npm run check && npm test && npm run build",
+    "package": "npm run verify && vsce package"
   },
   "dependencies": {
     "react": "^19.1.1",
@@ -203,6 +208,7 @@
     "@types/vscode": "^1.96.0",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.9",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.2"
   }
-}
+}\n
