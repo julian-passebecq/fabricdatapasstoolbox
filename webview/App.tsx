@@ -14,6 +14,15 @@ type Environment = {
   bridgeMode: "commands" | "portal";
 };
 
+type Runtime = {
+  toolboxRoot?: string;
+  securityAuditReady: boolean;
+  securityAuditPath?: string;
+  assessmentCommand: string;
+  workspaceMcpConfigured: boolean;
+  portableMcpConfigured: boolean;
+};
+
 type ProjectSummary = {
   name: string;
   type: string;
@@ -26,16 +35,15 @@ type ProjectSummary = {
 
 type ExtensionState = {
   environment: Environment;
+  runtime: Runtime;
   project?: ProjectSummary;
 };
 
 type Tool = {
-  id: string;
+  id: "fabricStudio" | "migration" | "assessment" | "security" | "mcp";
   name: string;
   description: string;
   ui: "Existing UI" | "Datapass UI" | "CLI / Script";
-  action: string;
-  target: string;
 };
 
 const tools: Tool[] = [
@@ -43,62 +51,72 @@ const tools: Tool[] = [
     id: "fabricStudio",
     name: "FabricStudio",
     description: "Mature VS Code UI for Fabric workspace power-user, deployment, connection, capacity and admin workflows.",
-    ui: "Existing UI",
-    action: "Open FabricStudio",
-    target: "fabricStudio"
+    ui: "Existing UI"
   },
   {
     id: "migration",
     name: "Data Factory Migration Assistant",
     description: "Existing React wizard for ADF/Synapse to Fabric migration. Datapass links to it instead of rebuilding it.",
-    ui: "Existing UI",
-    action: "Open assistant",
-    target: "migration"
+    ui: "Existing UI"
   },
   {
     id: "assessment",
     name: "Fabric Assessment Tool",
-    description: "Migration inventory and readiness assessment. Currently CLI-first; a guided Datapass wrapper is a good candidate.",
-    ui: "CLI / Script",
-    action: "Open source",
-    target: "assessment"
+    description: "Migration inventory and readiness assessment. Datapass supplies a small guided command UI around the existing CLI.",
+    ui: "Datapass UI"
   },
   {
     id: "security",
     name: "Fabric Security Audit",
-    description: "PowerShell security troubleshooter with Markdown/JSON/CSV outputs. This is the first strong candidate for a guided Datapass form.",
-    ui: "CLI / Script",
-    action: "Open source",
-    target: "security"
+    description: "Guided front end for the existing PowerShell security troubleshooter in Microsoft Fabric Toolbox.",
+    ui: "Datapass UI"
   },
   {
     id: "mcp",
     name: "MCP",
-    description: "Optional agent integration. Keep it discoverable and status-oriented; the Fabric workflow must not depend on it.",
-    ui: "Datapass UI",
-    action: "Open Toolbox",
-    target: "toolbox"
+    description: "Optional workspace configuration/status. Datapass keeps MCP visible without making the Fabric workflow depend on it.",
+    ui: "Datapass UI"
   }
 ];
 
+const emptyState: ExtensionState = {
+  environment: {
+    coreInstalled: false,
+    coreActive: false,
+    studioInstalled: false,
+    studioActive: false,
+    bridgeMode: "portal"
+  },
+  runtime: {
+    securityAuditReady: false,
+    assessmentCommand: "fat",
+    workspaceMcpConfigured: false,
+    portableMcpConfigured: false
+  }
+};
+
 export function App(): React.JSX.Element {
-  const [state, setState] = useState<ExtensionState>({
-    environment: {
-      coreInstalled: false,
-      coreActive: false,
-      studioInstalled: false,
-      studioActive: false,
-      bridgeMode: "portal"
-    }
-  });
+  const [state, setState] = useState<ExtensionState>(emptyState);
+  const [activeTool, setActiveTool] = useState<"security" | "assessment" | null>(null);
+  const [securityUrl, setSecurityUrl] = useState("");
+  const [securityUser, setSecurityUser] = useState("");
+  const [assessmentSource, setAssessmentSource] = useState<"synapse" | "databricks">("synapse");
+  const [assessmentWorkspace, setAssessmentWorkspace] = useState("");
+  const [assessmentOutput, setAssessmentOutput] = useState("./fabric-assessment-output");
+  const [result, setResult] = useState("");
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (event.data?.type === "state") {
         setState({
           environment: event.data.environment,
+          runtime: event.data.runtime,
           project: event.data.project
         });
+      } else if (event.data?.type === "toolResult") {
+        setResult(String(event.data.command ?? ""));
+      } else if (event.data?.type === "toolError") {
+        setResult(`Error: ${String(event.data.message ?? "Unknown error")}`);
       }
     };
 
@@ -178,12 +196,131 @@ export function App(): React.JSX.Element {
                 <span className="badge">{tool.ui}</span>
               </div>
               <p>{tool.description}</p>
-              <button className="linkButton" onClick={() => open(tool.target)}>
-                {tool.action}
-              </button>
+              {renderToolAction(tool)}
             </article>
           ))}
         </div>
+      </section>
+
+      {activeTool === "security" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Security Audit</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            Runs the upstream <code>Invoke-FabricSecurityAudit.ps1</code> script from your local Fabric Toolbox clone.
+          </p>
+
+          <RuntimeNotice
+            ready={state.runtime.securityAuditReady}
+            readyText={state.runtime.securityAuditPath ?? "Security audit script detected"}
+            missingText="Configure the local Fabric Toolbox folder before running this tool."
+            onConfigure={() => command("configureToolboxRoot")}
+          />
+
+          <label>
+            Fabric / Power BI item URL
+            <input
+              value={securityUrl}
+              onChange={event => setSecurityUrl(event.target.value)}
+              placeholder="https://app.fabric.microsoft.com/groups/.../warehouses/..."
+            />
+          </label>
+
+          <label>
+            User (optional)
+            <input
+              value={securityUser}
+              onChange={event => setSecurityUser(event.target.value)}
+              placeholder="user@contoso.com"
+            />
+          </label>
+
+          <div className="buttonRow">
+            <button
+              disabled={!state.runtime.securityAuditReady}
+              onClick={() => security("copy")}
+            >
+              Copy command
+            </button>
+            <button
+              disabled={!state.runtime.securityAuditReady}
+              onClick={() => security("run")}
+            >
+              Run in PowerShell
+            </button>
+          </div>
+
+          <button className="linkButton" onClick={() => open("security")}>Open upstream source</button>
+        </section>
+      )}
+
+      {activeTool === "assessment" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Fabric Assessment Tool</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            Uses the configured <code>{state.runtime.assessmentCommand}</code> command. Authentication remains with the upstream CLI.
+          </p>
+
+          <label>
+            Source
+            <select
+              value={assessmentSource}
+              onChange={event => setAssessmentSource(event.target.value as "synapse" | "databricks")}
+            >
+              <option value="synapse">Azure Synapse</option>
+              <option value="databricks">Databricks</option>
+            </select>
+          </label>
+
+          <label>
+            Workspace (optional)
+            <input
+              value={assessmentWorkspace}
+              onChange={event => setAssessmentWorkspace(event.target.value)}
+              placeholder="workspace-name"
+            />
+          </label>
+
+          <label>
+            Output folder
+            <input
+              value={assessmentOutput}
+              onChange={event => setAssessmentOutput(event.target.value)}
+            />
+          </label>
+
+          <div className="buttonRow">
+            <button onClick={() => assessment("copy")}>Copy command</button>
+            <button onClick={() => assessment("run")}>Run in PowerShell</button>
+          </div>
+
+          <button className="linkButton" onClick={() => open("assessment")}>Open upstream source</button>
+        </section>
+      )}
+
+      {result && (
+        <section className="resultPanel">
+          <span className="smallLabel">LAST GENERATED COMMAND</span>
+          <code>{result}</code>
+          <button className="linkButton" onClick={() => setResult("")}>Clear</button>
+        </section>
+      )}
+
+      <section className="mcpPanel">
+        <div>
+          <h2>MCP</h2>
+          <p className="muted">
+            Workspace: {state.runtime.workspaceMcpConfigured ? "configured" : "not configured"} · Portable: {state.runtime.portableMcpConfigured ? "configured" : "not configured"}
+          </p>
+        </div>
+        <button className="secondary" onClick={() => command("mcpConfig")}>Open MCP config</button>
       </section>
 
       <section className="principle">
@@ -194,12 +331,51 @@ export function App(): React.JSX.Element {
     </main>
   );
 
+  function renderToolAction(tool: Tool): React.JSX.Element {
+    if (tool.id === "security") {
+      return <button className="linkButton" onClick={() => setActiveTool("security")}>Open guided UI</button>;
+    }
+    if (tool.id === "assessment") {
+      return <button className="linkButton" onClick={() => setActiveTool("assessment")}>Open guided UI</button>;
+    }
+    if (tool.id === "mcp") {
+      return <button className="linkButton" onClick={() => command("mcpConfig")}>Open MCP config</button>;
+    }
+
+    return (
+      <button className="linkButton" onClick={() => open(tool.id)}>
+        {tool.id === "migration" ? "Open assistant" : "Open FabricStudio"}
+      </button>
+    );
+  }
+
   function open(target: string): void {
     vscode.postMessage({ type: "open", target });
   }
 
   function command(commandName: string): void {
     vscode.postMessage({ type: "command", command: commandName });
+  }
+
+  function security(action: "copy" | "run"): void {
+    setResult("");
+    vscode.postMessage({
+      type: "securityAudit",
+      action,
+      url: securityUrl,
+      user: securityUser
+    });
+  }
+
+  function assessment(action: "copy" | "run"): void {
+    setResult("");
+    vscode.postMessage({
+      type: "assessment",
+      action,
+      source: assessmentSource,
+      workspace: assessmentWorkspace,
+      output: assessmentOutput
+    });
   }
 }
 
@@ -209,6 +385,24 @@ function StatusCard(props: { name: string; value: string; detail: string }): Rea
       <span>{props.name}</span>
       <strong>{props.value}</strong>
       <small>{props.detail}</small>
+    </div>
+  );
+}
+
+function RuntimeNotice(props: {
+  ready: boolean;
+  readyText: string;
+  missingText: string;
+  onConfigure: () => void;
+}): React.JSX.Element {
+  if (props.ready) {
+    return <p className="runtimeReady">{props.readyText}</p>;
+  }
+
+  return (
+    <div className="runtimeMissing">
+      <p>{props.missingText}</p>
+      <button className="secondary" onClick={props.onConfigure}>Configure Toolbox folder</button>
     </div>
   );
 }

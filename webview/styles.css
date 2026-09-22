@@ -55,15 +55,24 @@ p {
 }
 
 .projectCard,
-.emptyProject {
+.emptyProject,
+.guidedPanel,
+.resultPanel,
+.mcpPanel {
   margin-bottom: 10px;
   padding: 12px;
-  border: 1px solid var(--vscode-focusBorder);
+  border: 1px solid var(--vscode-panel-border);
   background: var(--vscode-editor-background);
   border-radius: 6px;
 }
 
-.projectHeader {
+.projectCard {
+  border-color: var(--vscode-focusBorder);
+}
+
+.projectHeader,
+.toolHeader,
+.mcpPanel {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -142,6 +151,12 @@ p {
   margin-top: 10px;
 }
 
+button,
+input,
+select {
+  font: inherit;
+}
+
 button {
   width: 100%;
   border: 1px solid var(--vscode-button-border, transparent);
@@ -152,15 +167,27 @@ button {
   background: var(--vscode-button-background);
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: var(--vscode-button-hoverBackground);
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 button.secondary,
-.linkButton {
+.linkButton,
+.iconButton {
   color: var(--vscode-foreground);
   background: transparent;
   border-color: var(--vscode-panel-border);
+}
+
+.iconButton {
+  width: auto;
+  padding: 4px 7px;
+  font-size: 10px;
 }
 
 section > h2 {
@@ -175,13 +202,6 @@ section > h2 {
 
 .toolCard {
   padding: 10px;
-}
-
-.toolHeader {
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  align-items: flex-start;
 }
 
 .toolCard p {
@@ -201,6 +221,65 @@ section > h2 {
 
 .linkButton {
   text-align: left;
+}
+
+.guidedPanel {
+  margin-top: 12px;
+}
+
+.guidedPanel label {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.guidedPanel input,
+.guidedPanel select {
+  width: 100%;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  padding: 7px 8px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+}
+
+.runtimeReady,
+.runtimeMissing {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-descriptionForeground);
+  word-break: break-word;
+}
+
+.runtimeMissing p {
+  margin: 0 0 8px;
+}
+
+.resultPanel {
+  display: grid;
+  gap: 8px;
+}
+
+.resultPanel code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--vscode-textCodeBlock-background);
+}
+
+.mcpPanel {
+  margin-top: 12px;
+  align-items: center;
+}
+
+.mcpPanel > button {
+  width: auto;
 }
 
 .principle {

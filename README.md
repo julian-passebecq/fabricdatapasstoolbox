@@ -17,7 +17,7 @@ For private/unpublished builds, Datapass currently integrates through the **comm
 
 That means we do **not** spoof an approved satellite identity and we do **not** fork the core extension. If Datapass is allow-listed later, the direct service-collection integration can be added behind the same adapter.
 
-## V0.2
+## V0.3
 
 The extension now provides:
 
@@ -31,7 +31,9 @@ The extension now provides:
 - automatic **`FABRIC_HANDOFF.md`** export for ChatGPT/Codex/Copilot;
 - a React **Toolbox** webview with current-project status;
 - Microsoft Fabric and FabricStudio detection;
-- links to existing migration/UI tools instead of reimplementing them;
+- guided **Fabric Security Audit** UI that runs the existing local Toolbox PowerShell script;
+- guided **Fabric Assessment Tool** command UI for Synapse/Databricks assessment;
+- optional MCP workspace status and `.vscode/mcp.json` creation;
 - GitHub Actions typecheck/build/VSIX packaging.
 
 ### Foil'o starter architecture
@@ -73,6 +75,46 @@ npm run package
 
 Marketplace publication is not required for personal use; install the generated VSIX directly in VS Code.
 
+## Local Fabric Toolbox
+
+The Security Audit wrapper deliberately does not copy Microsoft Fabric Toolbox scripts into this repository.
+
+Configure a local clone through:
+
+```text
+Datapass Fabric: Configure Local Fabric Toolbox
+```
+
+or set:
+
+```json
+{
+  "datapassFabric.toolboxRoot": "C:\\path\\to\\fabric-toolbox"
+}
+```
+
+Datapass then invokes:
+
+```text
+tools/fabric-security-audit/Invoke-FabricSecurityAudit.ps1
+```
+
+inside that clone.
+
+## Fabric Assessment Tool
+
+Install the upstream tool as documented by Microsoft Fabric Toolbox. Datapass defaults to the CLI command:
+
+```text
+fat
+```
+
+You can override it with `datapassFabric.assessmentCommand`.
+
+## MCP
+
+MCP is optional. Datapass can open/create a workspace `.vscode/mcp.json` with an empty `servers` object and reports whether workspace or portable `.mcp.json` configuration exists. It does not auto-install or trust any MCP server.
+
 ## Project state
 
 `fabric.project.json` is authoritative. It is deliberately portable and readable by humans and AI tools.
@@ -96,7 +138,7 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 | Fabric item power-user/admin UI | FabricStudio |
 | ADF migration wizard | Fabric Toolbox migration assistant |
 | Project plan / checklist / state | Datapass |
-| Guided UI for CLI/script-only Toolbox utilities | Datapass (incrementally) |
+| Guided UI for CLI/script-only Toolbox utilities | Datapass |
 | Fabric REST implementation | Upstream extensions / APIs, not a Datapass clone |
 
 ## Related repositories
@@ -108,8 +150,7 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 ## Next gates
 
 1. Pass CI and consume the generated VSIX artifact.
-2. Add guided React execution for **Fabric Security Audit**.
-3. Add guided React execution for **Fabric Assessment Tool**.
-4. Add richer task-specific deep links and resource capture (workspace/item IDs).
-5. Add optional MCP setup/status without making MCP a hard dependency.
-6. Add a second project template (Contoso batch/medallion) after the Foil'o path is stable.
+2. Add resource capture (workspace/item IDs) back into `fabric.project.json`.
+3. Add richer task-specific deep links and validation.
+4. Expand monitoring/deployment tool adapters selectively.
+5. Add a second project template (Contoso batch/medallion) after the Foil'o path is stable.

@@ -12,6 +12,7 @@ import {
   toggleTask
 } from "./projectState";
 import { ToolboxViewProvider } from "./toolboxPanel";
+import { configureToolboxRoot, openWorkspaceMcpConfig } from "./toolRunners";
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const checklist = new ChecklistProvider();
@@ -144,6 +145,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }),
 
+    vscode.commands.registerCommand("datapassFabric.configureToolboxRoot", async () => {
+      try {
+        const selected = await configureToolboxRoot();
+        if (selected) {
+          refreshAll();
+          void vscode.window.showInformationMessage(
+            `Fabric Toolbox root configured: ${selected}`
+          );
+        }
+      } catch (error) {
+        void vscode.window.showErrorMessage(toMessage(error));
+      }
+    }),
+
+    vscode.commands.registerCommand("datapassFabric.openMcpConfig", async () => {
+      try {
+        await openWorkspaceMcpConfig();
+        refreshAll();
+      } catch (error) {
+        void vscode.window.showErrorMessage(toMessage(error));
+      }
+    }),
+
     vscode.commands.registerCommand("datapassFabric.refresh", refreshAll),
 
     vscode.commands.registerCommand("datapassFabric.openFabric", openFabricHome),
@@ -165,12 +189,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  const watcher = vscode.workspace.createFileSystemWatcher("**/fabric.project.json");
-  watcher.onDidChange(refreshAll);
-  watcher.onDidCreate(refreshAll);
-  watcher.onDidDelete(refreshAll);
-  context.subscriptions.push(watcher);
+  const manifestWatcher = vscode.workspace.createFileSystemWatcher("**/fabric.project.json");
+  manifestWatcher.onDidChange(refreshAll);
+  manifestWatcher.onDidCreate(refreshAll);
+  manifestWatcher.onDidDelete(refreshAll);
 
+  const mcpWatcher = vscode.workspace.createFileSystemWatcher("**/{.vscode/mcp.json,.mcp.json}");
+  mcpWatcher.onDidChange(refreshAll);
+  mcpWatcher.onDidCreate(refreshAll);
+  mcpWatcher.onDidDelete(refreshAll);
+
+  context.subscriptions.push(manifestWatcher, mcpWatcher);
   refreshAll();
 }
 

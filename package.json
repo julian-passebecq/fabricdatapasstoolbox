@@ -2,7 +2,7 @@
   "name": "fabric-datapass-toolbox",
   "displayName": "Datapass Fabric Toolbox",
   "description": "A thin Microsoft Fabric companion for guided projects, checklists, project state and selected Toolbox utilities.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "julian-passebecq",
   "license": "MIT",
   "repository": {
@@ -23,6 +23,23 @@
     "fabric.vscode-fabric"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Datapass Fabric",
+      "properties": {
+        "datapassFabric.toolboxRoot": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Local path to a clone of Microsoft Fabric Toolbox (or your fabric-toolbox_J fork). Used to launch script-based tools such as Fabric Security Audit."
+        },
+        "datapassFabric.assessmentCommand": {
+          "type": "string",
+          "default": "fat",
+          "scope": "resource",
+          "description": "Command used to launch Fabric Assessment Tool after it has been installed."
+        }
+      }
+    },
     "commands": [
       {
         "command": "datapassFabric.initializeProject",
@@ -50,6 +67,16 @@
       {
         "command": "datapassFabric.showProjectSummary",
         "title": "Show Project Summary",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.configureToolboxRoot",
+        "title": "Configure Local Fabric Toolbox",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.openMcpConfig",
+        "title": "Open Workspace MCP Configuration",
         "category": "Datapass Fabric"
       },
       {
