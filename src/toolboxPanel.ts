@@ -4,7 +4,7 @@ import {
   openFabricHome,
   openFabricStudio
 } from "./fabricIntegration";
-import { getProgress, getProjectIssues, getReadyTasks, readManifest } from "./projectState";
+import { getProgress, getProjectIssues, getReadyTasks, readManifest, readManifestResult } from "./projectState";
 import { CURATED_TOOLBOX_ITEMS, findToolUrl, PRIMARY_TOOLS } from "./toolboxCatalog";
 import {
   configureToolboxRoot,
@@ -113,11 +113,12 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    const [environment, manifest, runtime] = await Promise.all([
+    const [environment, manifestResult, runtime] = await Promise.all([
       getFabricIntegrationStatus(),
-      readManifest(),
+      readManifestResult(),
       getToolRuntimeStatus()
     ]);
+    const manifest = manifestResult.manifest;
 
     const progress = manifest ? getProgress(manifest) : undefined;
     const issues = manifest ? getProjectIssues(manifest) : [];
@@ -128,6 +129,10 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
       runtime,
       tools: PRIMARY_TOOLS,
       catalogItems: CURATED_TOOLBOX_ITEMS,
+      manifestStatus: {
+        exists: manifestResult.exists,
+        errors: manifestResult.errors
+      },
       project: manifest && progress
         ? {
             name: manifest.project.name,
@@ -163,6 +168,8 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
       );
     } else if (command === "handoff") {
       await vscode.commands.executeCommand("datapassFabric.exportHandoff");
+    } else if (command === "openManifest") {
+      await vscode.commands.executeCommand("datapassFabric.openManifest");
     } else if (command === "next") {
       const manifest = await readManifest();
       const next = manifest ? getProgress(manifest).next : undefined;
