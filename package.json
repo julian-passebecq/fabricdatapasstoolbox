@@ -2,7 +2,7 @@
   "name": "fabric-datapass-toolbox",
   "displayName": "Datapass Fabric Toolbox",
   "description": "A thin Microsoft Fabric companion for guided projects, checklists, project state and selected Toolbox utilities.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "julian-passebecq",
   "license": "MIT",
   "repository": {
