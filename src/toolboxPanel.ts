@@ -4,7 +4,7 @@ import {
   openFabricHome,
   openFabricStudio
 } from "./fabricIntegration";
-import { getProgress, getProjectIssues, readManifest } from "./projectState";
+import { getProgress, getProjectIssues, getReadyTasks, readManifest } from "./projectState";
 import {
   configureToolboxRoot,
   copyAssessmentCommand,
@@ -133,6 +133,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
 
     const progress = manifest ? getProgress(manifest) : undefined;
     const issues = manifest ? getProjectIssues(manifest) : [];
+    const readyTasks = manifest ? getReadyTasks(manifest) : [];
     await this.view.webview.postMessage({
       type: "state",
       environment,
@@ -149,6 +150,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
             nextTaskId: progress.next?.id,
             resourceCount: Object.keys(manifest.resources).length,
             issueCount: issues.length,
+            readyTitles: readyTasks.map(task => task.title),
             architectureStages: [
               { label: "Sources", items: manifest.architecture.source },
               { label: "Ingestion", items: manifest.architecture.ingestion },
