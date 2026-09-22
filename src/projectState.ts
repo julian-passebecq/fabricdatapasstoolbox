@@ -4,7 +4,8 @@ import {
   FabricResource,
   MANIFEST_NAME,
   renderHandoff,
-  TaskStatus
+  TaskStatus,
+  validateManifestDocument
 } from "./projectModel";
 import {
   createProjectFromTemplate,
@@ -26,18 +27,49 @@ export function manifestUri(root = getWorkspaceRoot()): vscode.Uri | undefined {
   return root ? vscode.Uri.joinPath(root, MANIFEST_NAME) : undefined;
 }
 
-export async function readManifest(): Promise<FabricProjectManifest | undefined> {
+export interface ManifestReadResult {
+  exists: boolean;
+  manifest?: FabricProjectManifest;
+  errors: string[];
+}
+
+export async function readManifestResult(): Promise<ManifestReadResult> {
   const uri = manifestUri();
   if (!uri) {
-    return undefined;
+    return { exists: false, errors: [] };
   }
 
   try {
-    const bytes = await vscode.workspace.fs.readFile(uri);
-    return JSON.parse(textDecoder.decode(bytes)) as FabricProjectManifest;
+    await vscode.workspace.fs.stat(uri);
   } catch {
-    return undefined;
+    return { exists: false, errors: [] };
   }
+
+  let raw: unknown;
+  try {
+    const bytes = await vscode.workspace.fs.readFile(uri);
+    raw = JSON.parse(textDecoder.decode(bytes));
+  } catch (error) {
+    return {
+      exists: true,
+      errors: [`Invalid JSON: ${error instanceof Error ? error.message : String(error)}`]
+    };
+  }
+
+  const errors = validateManifestDocument(raw);
+  if (errors.length) {
+    return { exists: true, errors };
+  }
+
+  return {
+    exists: true,
+    manifest: raw as FabricProjectManifest,
+    errors: []
+  };
+}
+
+export async function readManifest(): Promise<FabricProjectManifest | undefined> {
+  return (await readManifestResult()).manifest;
 }
 
 export async function writeManifest(manifest: FabricProjectManifest): Promise<void> {
@@ -59,9 +91,14 @@ export async function initializeProject(
     throw new Error("Open a VS Code folder before initializing a Fabric project.");
   }
 
-  const existing = await readManifest();
-  if (existing) {
-    return existing;
+  const existing = await readManifestResult();
+  if (existing.exists) {
+    if (existing.manifest) {
+      return existing.manifest;
+    }
+    throw new Error(
+      `Existing ${MANIFEST_NAME} is invalid: ${existing.errors.join(" ")}`
+    );
   }
 
   const manifest = createProjectFromTemplate(templateId);
