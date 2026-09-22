@@ -412,3 +412,19 @@ code {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;
 }
+
+
+.manifestInvalid {
+  border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-testing-iconFailed));
+}
+
+.manifestErrorList {
+  margin: 8px 0 10px;
+  padding-left: 18px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+}
+
+.manifestErrorList li + li {
+  margin-top: 4px;
+}
