@@ -143,6 +143,11 @@ export function App(): React.JSX.Element {
   }, []);
 
   const normalizedCatalogQuery = catalogQuery.trim().toLowerCase();
+  const toolCoverage = {
+    existing: state.tools.filter(tool => tool.ui === "Existing UI").length,
+    datapass: state.tools.filter(tool => tool.ui === "Datapass UI").length,
+    cli: state.tools.filter(tool => tool.ui === "CLI / Script").length
+  };
   const filteredCatalog = state.catalogItems.filter(item => {
     if (!normalizedCatalogQuery) {
       return true;
@@ -292,6 +297,11 @@ export function App(): React.JSX.Element {
 
       <section>
         <h2>Useful tools</h2>
+        <div className="coverageGrid">
+          <div><strong>{toolCoverage.existing}</strong><span>Existing UI</span></div>
+          <div><strong>{toolCoverage.datapass}</strong><span>Datapass UI</span></div>
+          <div><strong>{toolCoverage.cli}</strong><span>CLI / script</span></div>
+        </div>
         <div className="toolList">
           {state.tools.map(tool => (
             <article className="toolCard" key={tool.id}>
