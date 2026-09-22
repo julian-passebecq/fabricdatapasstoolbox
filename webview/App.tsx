@@ -44,72 +44,24 @@ type ProjectSummary = {
 type ExtensionState = {
   environment: Environment;
   runtime: Runtime;
+  tools: Tool[];
+  catalogItems: CatalogItem[];
   project?: ProjectSummary;
 };
 
 type Tool = {
-  id: "fabricStudio" | "migration" | "assessment" | "security" | "mcp";
+  id: string;
   name: string;
   description: string;
   ui: "Existing UI" | "Datapass UI" | "CLI / Script";
 };
 
 type CatalogItem = {
-  id:
-    | "costMonitoring"
-    | "platformMonitoring"
-    | "sparkMonitoring"
-    | "workspaceMonitoring"
-    | "cicd"
-    | "bcdr"
-    | "semanticAudit";
+  id: string;
   name: string;
-  category: "Monitoring" | "Operations" | "BI";
-  surface: "Report / dashboard" | "Accelerator" | "Tool / script";
+  category: string;
+  surface: string;
 };
-
-const tools: Tool[] = [
-  {
-    id: "fabricStudio",
-    name: "FabricStudio",
-    description: "Mature VS Code UI for Fabric workspace power-user, deployment, connection, capacity and admin workflows.",
-    ui: "Existing UI"
-  },
-  {
-    id: "migration",
-    name: "Data Factory Migration Assistant",
-    description: "Existing React wizard for ADF/Synapse to Fabric migration. Datapass links to it instead of rebuilding it.",
-    ui: "Existing UI"
-  },
-  {
-    id: "assessment",
-    name: "Fabric Assessment Tool",
-    description: "Migration inventory and readiness assessment. Datapass supplies a small guided command UI around the existing CLI.",
-    ui: "Datapass UI"
-  },
-  {
-    id: "security",
-    name: "Fabric Security Audit",
-    description: "Guided front end for the existing PowerShell security troubleshooter in Microsoft Fabric Toolbox.",
-    ui: "Datapass UI"
-  },
-  {
-    id: "mcp",
-    name: "MCP",
-    description: "Optional workspace configuration/status. Datapass keeps MCP visible without making the Fabric workflow depend on it.",
-    ui: "Datapass UI"
-  }
-];
-
-const catalogItems: CatalogItem[] = [
-  { id: "costMonitoring", name: "Fabric Cost Analysis", category: "Monitoring", surface: "Report / dashboard" },
-  { id: "platformMonitoring", name: "Fabric Platform Monitoring", category: "Monitoring", surface: "Report / dashboard" },
-  { id: "sparkMonitoring", name: "Fabric Spark Monitoring", category: "Monitoring", surface: "Report / dashboard" },
-  { id: "workspaceMonitoring", name: "Workspace Monitoring Dashboards", category: "Monitoring", surface: "Report / dashboard" },
-  { id: "cicd", name: "Fabric CI/CD accelerators", category: "Operations", surface: "Accelerator" },
-  { id: "bcdr", name: "Business Continuity / DR", category: "Operations", surface: "Accelerator" },
-  { id: "semanticAudit", name: "Semantic Model Audit", category: "BI", surface: "Tool / script" }
-];
 
 const emptyState: ExtensionState = {
   environment: {
@@ -124,7 +76,9 @@ const emptyState: ExtensionState = {
     assessmentCommand: "fat",
     workspaceMcpConfigured: false,
     portableMcpConfigured: false
-  }
+  },
+  tools: [],
+  catalogItems: []
 };
 
 export function App(): React.JSX.Element {
@@ -135,6 +89,7 @@ export function App(): React.JSX.Element {
   const [assessmentSource, setAssessmentSource] = useState<"synapse" | "databricks">("synapse");
   const [assessmentWorkspace, setAssessmentWorkspace] = useState("");
   const [assessmentOutput, setAssessmentOutput] = useState("./fabric-assessment-output");
+  const [catalogQuery, setCatalogQuery] = useState("");
   const [result, setResult] = useState("");
 
   useEffect(() => {
@@ -143,6 +98,8 @@ export function App(): React.JSX.Element {
         setState({
           environment: event.data.environment,
           runtime: event.data.runtime,
+          tools: Array.isArray(event.data.tools) ? event.data.tools : [],
+          catalogItems: Array.isArray(event.data.catalogItems) ? event.data.catalogItems : [],
           project: event.data.project
         });
       } else if (event.data?.type === "toolResult") {
@@ -156,6 +113,15 @@ export function App(): React.JSX.Element {
     vscode.postMessage({ type: "ready" });
     return () => window.removeEventListener("message", listener);
   }, []);
+
+  const normalizedCatalogQuery = catalogQuery.trim().toLowerCase();
+  const filteredCatalog = state.catalogItems.filter(item => {
+    if (!normalizedCatalogQuery) {
+      return true;
+    }
+    return [item.name, item.category, item.surface]
+      .some(value => value.toLowerCase().includes(normalizedCatalogQuery));
+  });
 
   return (
     <main>
@@ -261,7 +227,7 @@ export function App(): React.JSX.Element {
       <section>
         <h2>Useful tools</h2>
         <div className="toolList">
-          {tools.map(tool => (
+          {state.tools.map(tool => (
             <article className="toolCard" key={tool.id}>
               <div className="toolHeader">
                 <h3>{tool.name}</h3>
@@ -279,8 +245,15 @@ export function App(): React.JSX.Element {
         <p className="muted catalogIntro">
           Useful upstream assets that already exist. Datapass links to them rather than copying their implementation.
         </p>
+        <input
+          className="catalogSearch"
+          value={catalogQuery}
+          onChange={event => setCatalogQuery(event.target.value)}
+          placeholder="Filter monitoring, migration, BI, MCP..."
+          aria-label="Filter Fabric Toolbox catalog"
+        />
         <div className="catalogList">
-          {catalogItems.map(item => (
+          {filteredCatalog.map(item => (
             <div className="catalogRow" key={item.id}>
               <div>
                 <strong>{item.name}</strong>
