@@ -552,3 +552,15 @@ button.templateCheck {
   color: var(--vscode-descriptionForeground);
   font-size: 10px;
 }
+
+
+.securityNotice {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--vscode-inputValidation-warningBorder, var(--vscode-panel-border));
+  border-radius: 4px;
+  background: var(--vscode-inputValidation-warningBackground, var(--vscode-editorWidget-background));
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  line-height: 1.45;
+}
