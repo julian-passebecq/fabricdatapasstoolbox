@@ -5,6 +5,7 @@ import {
   MANIFEST_NAME,
   renderHandoff,
   TaskStatus,
+  transitionTaskStatus,
   validateManifestDocument
 } from "./projectModel";
 import {
@@ -124,7 +125,7 @@ export async function setTaskStatus(
     return manifest;
   }
 
-  task.status = status;
+  transitionTaskStatus(task, status);
   await writeManifest(manifest);
   return manifest;
 }
@@ -140,7 +141,7 @@ export async function toggleTask(taskId: string): Promise<FabricProjectManifest 
     return manifest;
   }
 
-  task.status = task.status === "done" ? "todo" : "done";
+  transitionTaskStatus(task, task.status === "done" ? "todo" : "done");
   await writeManifest(manifest);
   return manifest;
 }
