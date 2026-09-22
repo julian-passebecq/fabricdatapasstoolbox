@@ -1,20 +1,26 @@
 import * as vscode from "vscode";
+import {
+  getFabricIntegrationStatus,
+  openFabricHome,
+  openFabricStudio
+} from "./fabricIntegration";
+import { getProgress, readManifest } from "./projectState";
 
 const URLS: Record<string, string> = {
-  fabric: "https://app.fabric.microsoft.com/",
   migration: "https://github.com/microsoft/fabric-toolbox/tree/main/tools/FabricDataFactoryMigrationAssistant",
   assessment: "https://github.com/microsoft/fabric-toolbox/tree/main/tools/fabric-assessment-tool",
   security: "https://github.com/microsoft/fabric-toolbox/tree/main/tools/fabric-security-audit",
-  toolbox: "https://github.com/microsoft/fabric-toolbox",
-  fabricStudio: "https://marketplace.visualstudio.com/items?itemName=GerhardBrueckl.fabricstudio"
+  toolbox: "https://github.com/microsoft/fabric-toolbox"
 };
 
 export class ToolboxViewProvider implements vscode.WebviewViewProvider {
   static readonly viewType = "datapassFabric.toolbox";
+  private view?: vscode.WebviewView;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
   resolveWebviewView(view: vscode.WebviewView): void {
+    this.view = view;
     view.webview.options = {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, "dist")]
@@ -22,7 +28,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
 
     const script = view.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "dist", "webview.js"));
     const style = view.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "dist", "webview.css"));
-    const nonce = String(Date.now());
+    const nonce = createNonce();
 
     view.webview.html = `<!DOCTYPE html>
 <html lang="en">
@@ -40,24 +46,82 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
 </html>`;
 
     view.webview.onDidReceiveMessage(async message => {
+      if (message?.type === "ready") {
+        await this.refresh();
+        return;
+      }
+
       if (message?.type === "open" && typeof message.target === "string") {
-        const url = URLS[message.target];
-        if (url) {
-          await vscode.env.openExternal(vscode.Uri.parse(url));
+        await this.openTarget(message.target);
+        return;
+      }
+
+      if (message?.type === "command") {
+        if (message.command === "initialize") {
+          await vscode.commands.executeCommand("datapassFabric.initializeProject");
+        } else if (message.command === "checklist") {
+          await vscode.commands.executeCommand(
+            "workbench.actions.view.openView",
+            "datapassFabric.checklist"
+          );
+        } else if (message.command === "handoff") {
+          await vscode.commands.executeCommand("datapassFabric.exportHandoff");
         }
       }
-
-      if (message?.type === "command" && message.command === "initialize") {
-        await vscode.commands.executeCommand("datapassFabric.initializeProject");
-      }
-    });
-
-    const coreInstalled = Boolean(vscode.extensions.getExtension("fabric.vscode-fabric"));
-    const studioInstalled = Boolean(vscode.extensions.getExtension("GerhardBrueckl.fabricstudio"));
-    view.webview.postMessage({
-      type: "environment",
-      coreInstalled,
-      studioInstalled
     });
   }
+
+  async refresh(): Promise<void> {
+    if (!this.view) {
+      return;
+    }
+
+    const [environment, manifest] = await Promise.all([
+      getFabricIntegrationStatus(),
+      readManifest()
+    ]);
+
+    const progress = manifest ? getProgress(manifest) : undefined;
+    await this.view.webview.postMessage({
+      type: "state",
+      environment,
+      project: manifest && progress
+        ? {
+            name: manifest.project.name,
+            type: manifest.project.type,
+            environment: manifest.project.environment,
+            done: progress.done,
+            total: progress.total,
+            percent: progress.percent,
+            nextTitle: progress.next?.title
+          }
+        : undefined
+    });
+  }
+
+  private async openTarget(target: string): Promise<void> {
+    if (target === "fabric") {
+      await openFabricHome();
+      return;
+    }
+
+    if (target === "fabricStudio") {
+      await openFabricStudio();
+      return;
+    }
+
+    const url = URLS[target];
+    if (url) {
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    }
+  }
+}
+
+function createNonce(): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let nonce = "";
+  for (let index = 0; index < 32; index += 1) {
+    nonce += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+  }
+  return nonce;
 }

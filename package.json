@@ -2,9 +2,13 @@
   "name": "fabric-datapass-toolbox",
   "displayName": "Datapass Fabric Toolbox",
   "description": "A thin Microsoft Fabric companion for guided projects, checklists, project state and selected Toolbox utilities.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "julian-passebecq",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/julian-passebecq/fabricdatapasstoolbox.git"
+  },
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -28,11 +32,24 @@
       {
         "command": "datapassFabric.openManifest",
         "title": "Open Project Manifest",
-        "category": "Datapass Fabric"
+        "category": "Datapass Fabric",
+        "icon": "$(json)"
+      },
+      {
+        "command": "datapassFabric.taskAction",
+        "title": "Open Task",
+        "category": "Datapass Fabric",
+        "icon": "$(play)"
       },
       {
         "command": "datapassFabric.toggleTask",
-        "title": "Toggle Checklist Task",
+        "title": "Toggle Task Done",
+        "category": "Datapass Fabric",
+        "icon": "$(check)"
+      },
+      {
+        "command": "datapassFabric.showProjectSummary",
+        "title": "Show Project Summary",
         "category": "Datapass Fabric"
       },
       {
@@ -49,7 +66,8 @@
       {
         "command": "datapassFabric.exportHandoff",
         "title": "Export AI Handoff",
-        "category": "Datapass Fabric"
+        "category": "Datapass Fabric",
+        "icon": "$(export)"
       }
     ],
     "viewsContainers": {
@@ -85,22 +103,38 @@
         {
           "command": "datapassFabric.refresh",
           "when": "view == datapassFabric.checklist",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "datapassFabric.openManifest",
           "when": "view == datapassFabric.checklist",
-          "group": "navigation"
+          "group": "navigation@2"
+        },
+        {
+          "command": "datapassFabric.exportHandoff",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
         {
+          "command": "datapassFabric.taskAction",
+          "when": "view == datapassFabric.checklist && viewItem == datapassFabric.task",
+          "group": "inline@1"
+        },
+        {
           "command": "datapassFabric.toggleTask",
           "when": "view == datapassFabric.checklist && viewItem == datapassFabric.task",
-          "group": "inline"
+          "group": "inline@2"
         }
       ]
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "fabric.project.json",
+        "url": "./schemas/fabric.project.schema.json"
+      }
+    ]
   },
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
@@ -110,8 +144,6 @@
     "package": "npm run check && npm run build && vsce package"
   },
   "dependencies": {
-    "@microsoft/vscode-fabric-api": "0.39.0-preview",
-    "@vscode/webview-ui-toolkit": "^1.4.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

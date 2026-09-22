@@ -1,7 +1,22 @@
 import * as vscode from "vscode";
-import { FabricProjectManifest, FabricTask, readManifest } from "./projectState";
+import {
+  FabricProjectManifest,
+  FabricTask,
+  getProgress,
+  readManifest
+} from "./projectState";
 
-type ChecklistNode = PhaseNode | TaskNode | InfoNode;
+type ChecklistNode = ProjectNode | NextNode | PhaseNode | TaskNode | InfoNode;
+
+interface ProjectNode {
+  kind: "project";
+  manifest: FabricProjectManifest;
+}
+
+interface NextNode {
+  kind: "next";
+  task: FabricTask;
+}
 
 interface PhaseNode {
   kind: "phase";
@@ -29,6 +44,40 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
   }
 
   getTreeItem(element: ChecklistNode): vscode.TreeItem {
+    if (element.kind === "project") {
+      const progress = getProgress(element.manifest);
+      const item = new vscode.TreeItem(
+        element.manifest.project.name,
+        vscode.TreeItemCollapsibleState.None
+      );
+      item.iconPath = new vscode.ThemeIcon("graph");
+      item.description = `${progress.done}/${progress.total} · ${progress.percent}%`;
+      item.tooltip = new vscode.MarkdownString(
+        `**${element.manifest.project.name}**\n\nType: ${element.manifest.project.type}\n\nEnvironment: ${element.manifest.project.environment}\n\nProgress: ${progress.percent}%`
+      );
+      item.command = {
+        command: "datapassFabric.showProjectSummary",
+        title: "Show project summary"
+      };
+      return item;
+    }
+
+    if (element.kind === "next") {
+      const item = new vscode.TreeItem(
+        `Next: ${element.task.title}`,
+        vscode.TreeItemCollapsibleState.None
+      );
+      item.iconPath = new vscode.ThemeIcon("arrow-right");
+      item.description = element.task.phase;
+      item.tooltip = element.task.description;
+      item.command = {
+        command: "datapassFabric.taskAction",
+        title: "Open next task",
+        arguments: [element.task.id]
+      };
+      return item;
+    }
+
     if (element.kind === "phase") {
       const done = element.tasks.filter(task => task.status === "done").length;
       const item = new vscode.TreeItem(
@@ -62,8 +111,8 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
       `**${task.phase}**\n\nStatus: ${task.status}\n\n${task.description ?? ""}`
     );
     item.command = {
-      command: "datapassFabric.toggleTask",
-      title: "Toggle checklist task",
+      command: "datapassFabric.taskAction",
+      title: "Open checklist task",
       arguments: [task.id]
     };
     return item;
@@ -85,7 +134,13 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
     }
 
     if (!element) {
-      return this.phaseNodes(manifest);
+      const progress = getProgress(manifest);
+      const nodes: ChecklistNode[] = [{ kind: "project", manifest }];
+      if (progress.next) {
+        nodes.push({ kind: "next", task: progress.next });
+      }
+      nodes.push(...this.phaseNodes(manifest));
+      return nodes;
     }
 
     if (element.kind === "phase") {

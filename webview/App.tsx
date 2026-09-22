@@ -1,10 +1,33 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 declare function acquireVsCodeApi(): {
   postMessage(message: unknown): void;
 };
 
 const vscode = acquireVsCodeApi();
+
+type Environment = {
+  coreInstalled: boolean;
+  coreActive: boolean;
+  studioInstalled: boolean;
+  studioActive: boolean;
+  bridgeMode: "commands" | "portal";
+};
+
+type ProjectSummary = {
+  name: string;
+  type: string;
+  environment: string;
+  done: number;
+  total: number;
+  percent: number;
+  nextTitle?: string;
+};
+
+type ExtensionState = {
+  environment: Environment;
+  project?: ProjectSummary;
+};
 
 type Tool = {
   id: string;
@@ -17,9 +40,17 @@ type Tool = {
 
 const tools: Tool[] = [
   {
+    id: "fabricStudio",
+    name: "FabricStudio",
+    description: "Mature VS Code UI for Fabric workspace power-user, deployment, connection, capacity and admin workflows.",
+    ui: "Existing UI",
+    action: "Open FabricStudio",
+    target: "fabricStudio"
+  },
+  {
     id: "migration",
     name: "Data Factory Migration Assistant",
-    description: "Existing React wizard for ADF/Synapse to Fabric migration. We link to it instead of rebuilding it.",
+    description: "Existing React wizard for ADF/Synapse to Fabric migration. Datapass links to it instead of rebuilding it.",
     ui: "Existing UI",
     action: "Open assistant",
     target: "migration"
@@ -27,7 +58,7 @@ const tools: Tool[] = [
   {
     id: "assessment",
     name: "Fabric Assessment Tool",
-    description: "Migration inventory and readiness assessment. Currently CLI-first; a Datapass wrapper is a good candidate.",
+    description: "Migration inventory and readiness assessment. Currently CLI-first; a guided Datapass wrapper is a good candidate.",
     ui: "CLI / Script",
     action: "Open source",
     target: "assessment"
@@ -35,7 +66,7 @@ const tools: Tool[] = [
   {
     id: "security",
     name: "Fabric Security Audit",
-    description: "PowerShell security troubleshooter with Markdown/JSON/CSV outputs. Candidate for a guided Datapass form.",
+    description: "PowerShell security troubleshooter with Markdown/JSON/CSV outputs. This is the first strong candidate for a guided Datapass form.",
     ui: "CLI / Script",
     action: "Open source",
     target: "security"
@@ -43,7 +74,7 @@ const tools: Tool[] = [
   {
     id: "mcp",
     name: "MCP",
-    description: "Optional agent integration. Keep it discoverable and status-oriented; do not make the Fabric workflow depend on it.",
+    description: "Optional agent integration. Keep it discoverable and status-oriented; the Fabric workflow must not depend on it.",
     ui: "Datapass UI",
     action: "Open Toolbox",
     target: "toolbox"
@@ -51,28 +82,30 @@ const tools: Tool[] = [
 ];
 
 export function App(): React.JSX.Element {
-  const [environment, setEnvironment] = useState({
-    coreInstalled: false,
-    studioInstalled: false
+  const [state, setState] = useState<ExtensionState>({
+    environment: {
+      coreInstalled: false,
+      coreActive: false,
+      studioInstalled: false,
+      studioActive: false,
+      bridgeMode: "portal"
+    }
   });
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      if (event.data?.type === "environment") {
-        setEnvironment({
-          coreInstalled: Boolean(event.data.coreInstalled),
-          studioInstalled: Boolean(event.data.studioInstalled)
+      if (event.data?.type === "state") {
+        setState({
+          environment: event.data.environment,
+          project: event.data.project
         });
       }
     };
+
     window.addEventListener("message", listener);
+    vscode.postMessage({ type: "ready" });
     return () => window.removeEventListener("message", listener);
   }, []);
-
-  const coreStatus = useMemo(
-    () => environment.coreInstalled ? "Installed" : "Not detected",
-    [environment.coreInstalled]
-  );
 
   return (
     <main>
@@ -80,25 +113,56 @@ export function App(): React.JSX.Element {
         <p className="eyebrow">DATAPASS FABRIC</p>
         <h1>Toolbox</h1>
         <p className="muted">
-          One place to discover Fabric utilities without duplicating good existing UIs.
+          Project guidance plus useful Fabric utilities, without duplicating good upstream UIs.
         </p>
       </header>
 
+      {state.project ? (
+        <section className="projectCard">
+          <div className="projectHeader">
+            <div>
+              <span className="smallLabel">CURRENT PROJECT</span>
+              <h2>{state.project.name}</h2>
+            </div>
+            <strong>{state.project.percent}%</strong>
+          </div>
+          <div className="progressTrack" aria-label="Project progress">
+            <div className="progressFill" style={{ width: `${state.project.percent}%` }} />
+          </div>
+          <p className="projectMeta">
+            {state.project.done}/{state.project.total} complete · {state.project.type} · {state.project.environment}
+          </p>
+          <p className="next">
+            <strong>Next:</strong> {state.project.nextTitle ?? "Checklist complete"}
+          </p>
+          <div className="buttonRow">
+            <button onClick={() => command("checklist")}>Open checklist</button>
+            <button className="secondary" onClick={() => command("handoff")}>AI handoff</button>
+          </div>
+        </section>
+      ) : (
+        <section className="emptyProject">
+          <strong>No project manifest detected.</strong>
+          <p>Create the Foil&apos;o starter checklist in the currently opened folder.</p>
+          <button onClick={() => command("initialize")}>Initialize Foil&apos;o project</button>
+        </section>
+      )}
+
       <section className="statusGrid">
-        <StatusCard name="Microsoft Fabric" value={coreStatus} />
+        <StatusCard
+          name="Microsoft Fabric"
+          value={state.environment.coreInstalled ? "Installed" : "Not detected"}
+          detail={state.environment.bridgeMode === "commands" ? "VS Code command bridge" : "Portal fallback"}
+        />
         <StatusCard
           name="FabricStudio"
-          value={environment.studioInstalled ? "Installed" : "Optional"}
+          value={state.environment.studioInstalled ? "Installed" : "Optional"}
+          detail={state.environment.studioActive ? "Active" : "Power-user UI"}
         />
       </section>
 
       <section className="actions">
-        <button onClick={() => vscode.postMessage({ type: "command", command: "initialize" })}>
-          Initialize Foil&apos;o checklist
-        </button>
-        <button className="secondary" onClick={() => open("fabric")}>
-          Open Fabric
-        </button>
+        <button onClick={() => open("fabric")}>Open Fabric</button>
       </section>
 
       <section>
@@ -120,8 +184,9 @@ export function App(): React.JSX.Element {
       </section>
 
       <section className="principle">
-        <strong>Rule:</strong> if Fabric or Toolbox already has a good UI, open it. Datapass adds UI only
-        where a script/CLI is useful but awkward, and keeps project progress in <code>fabric.project.json</code>.
+        <strong>Integration rule:</strong> private Datapass builds currently use Microsoft Fabric&apos;s contributed
+        VS Code commands and views. Microsoft&apos;s core currently allow-lists satellite IDs for direct
+        <code> addExtension()</code> registration, so Datapass does not hard-depend on that path yet.
       </section>
     </main>
   );
@@ -129,13 +194,18 @@ export function App(): React.JSX.Element {
   function open(target: string): void {
     vscode.postMessage({ type: "open", target });
   }
+
+  function command(commandName: string): void {
+    vscode.postMessage({ type: "command", command: commandName });
+  }
 }
 
-function StatusCard(props: { name: string; value: string }): React.JSX.Element {
+function StatusCard(props: { name: string; value: string; detail: string }): React.JSX.Element {
   return (
     <div className="statusCard">
       <span>{props.name}</span>
       <strong>{props.value}</strong>
+      <small>{props.detail}</small>
     </div>
   );
 }

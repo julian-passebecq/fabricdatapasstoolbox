@@ -1,0 +1,8 @@
+.github/**
+src/**
+webview/**
+node_modules/**
+coverage/**
+*.map
+tsconfig.json
+esbuild.mjs

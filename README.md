@@ -4,23 +4,35 @@ A thin **Microsoft Fabric companion for VS Code**.
 
 This repository intentionally does **not** fork Microsoft Fabric for VS Code, FabricStudio, or Microsoft Fabric Toolbox. Instead it composes them:
 
-- **Microsoft Fabric VS Code extension** — official authentication, workspace navigation, generic item import/export and the supported satellite-extension seam.
+- **Microsoft Fabric VS Code extension** — official authentication, workspace navigation, item creation/import/export and the Fabric developer shell.
 - **FabricStudio (Gerhard Brueckl)** — optional mature UI for workspaces, definitions, deployment pipelines, connections, capacities, administration, API notebooks and related power-user workflows.
 - **Microsoft Fabric Toolbox** — upstream catalog of accelerators, monitoring assets, migration tools, scripts and MCP servers.
 - **Datapass Fabric Toolbox** — the missing orchestration layer: project checklist, machine-readable project state, AI handoff and light UI around useful CLI/script-only tools.
 
-## V0.1
+## Current integration mode
 
-The first implementation provides:
+Datapass declares the official Microsoft Fabric extension as an extension dependency.
+
+For private/unpublished builds, Datapass currently integrates through the **commands and views contributed by the Microsoft extension**, with a Fabric portal fallback. The current Microsoft core implementation validates satellite registrations against an allow-list before accepting `addExtension()`.
+
+That means we do **not** spoof an approved satellite identity and we do **not** fork the core extension. If Datapass is allow-listed later, the direct service-collection integration can be added behind the same adapter.
+
+## V0.2
+
+The extension now provides:
 
 - a **Datapass Fabric** Activity Bar entry;
-- a native VS Code **Project Checklist**;
-- a persisted **`fabric.project.json`** project state;
+- a native VS Code **Project Checklist** grouped by project phase;
+- project-level progress percentage and a computed **Next** action;
+- task actions for **open/start**, **in progress**, **done**, **blocked**, and **todo**;
+- upstream Fabric command handoff with portal fallback;
+- persisted **`fabric.project.json`** project state with JSON schema validation;
 - a first **Foil'o real-time wind telemetry** project template;
 - automatic **`FABRIC_HANDOFF.md`** export for ChatGPT/Codex/Copilot;
-- a React **Toolbox** webview;
-- detection of the Microsoft Fabric and FabricStudio extensions;
-- links to existing migration/UI tools instead of reimplementing them.
+- a React **Toolbox** webview with current-project status;
+- Microsoft Fabric and FabricStudio detection;
+- links to existing migration/UI tools instead of reimplementing them;
+- GitHub Actions typecheck/build/VSIX packaging.
 
 ### Foil'o starter architecture
 
@@ -68,9 +80,12 @@ Marketplace publication is not required for personal use; install the generated 
 The extension can export `FABRIC_HANDOFF.md`, summarizing:
 
 - architecture;
+- progress percentage;
+- next action;
 - completed work;
 - in-progress work;
 - remaining checklist tasks;
+- known Fabric resource names/IDs;
 - architectural decisions.
 
 ## What we do not duplicate
@@ -92,8 +107,9 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 
 ## Next gates
 
-1. Validate/build the extension and install it locally as VSIX.
-2. Add richer checklist actions that deep-link to the correct Fabric/FabricStudio operation.
-3. Add guided React wrappers for **Security Audit** and **Fabric Assessment Tool**.
-4. Add optional MCP setup/status without making MCP a hard dependency.
-5. Add a second project template (Contoso batch/medallion) after the Foil'o path is stable.
+1. Pass CI and consume the generated VSIX artifact.
+2. Add guided React execution for **Fabric Security Audit**.
+3. Add guided React execution for **Fabric Assessment Tool**.
+4. Add richer task-specific deep links and resource capture (workspace/item IDs).
+5. Add optional MCP setup/status without making MCP a hard dependency.
+6. Add a second project template (Contoso batch/medallion) after the Foil'o path is stable.
