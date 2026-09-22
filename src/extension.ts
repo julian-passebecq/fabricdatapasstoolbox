@@ -6,7 +6,7 @@ import {
   getProgress,
   getProjectIssues,
   getUnmetDependencies,
-  initializeFoilProject,
+  initializeProject,
   manifestUri,
   readManifest,
   setTaskStatus,
@@ -16,6 +16,7 @@ import {
 import { captureResource } from "./resourceCapture";
 import { ToolboxViewProvider } from "./toolboxPanel";
 import { configureToolboxRoot, openWorkspaceMcpConfig } from "./toolRunners";
+import { PROJECT_TEMPLATES, ProjectTemplateId } from "./projectTemplates";
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const checklist = new ChecklistProvider();
@@ -113,7 +114,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand("datapassFabric.initializeProject", async () => {
       try {
-        const manifest = await initializeFoilProject();
+        const existing = await readManifest();
+        if (existing) {
+          void vscode.window.showInformationMessage(
+            `Fabric project '${existing.project.name}' is already initialized in this folder.`
+          );
+          return;
+        }
+
+        const choice = await vscode.window.showQuickPick(
+          PROJECT_TEMPLATES.map(template => ({
+            label: template.name,
+            description: `v${template.version}`,
+            detail: template.description,
+            templateId: template.id
+          })),
+          {
+            title: "Initialize Datapass Fabric project",
+            placeHolder: "Choose the architecture you want to practice"
+          }
+        );
+        if (!choice) {
+          return;
+        }
+
+        const manifest = await initializeProject(choice.templateId as ProjectTemplateId);
         refreshAll();
         void vscode.window.showInformationMessage(
           `Datapass Fabric project '${manifest.project.name}' is ready.`
