@@ -162,7 +162,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const issues = getProjectIssues(manifest);
       if (issues.length === 0) {
         void vscode.window.showInformationMessage(
-          "Project state is consistent: no completed task is missing its linked Fabric resource."
+          "Project state is consistent: resource links and task sequencing are valid."
         );
         return;
       }
