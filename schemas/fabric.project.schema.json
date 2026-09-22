@@ -13,6 +13,8 @@
         "name": { "type": "string", "minLength": 1 },
         "type": { "type": "string", "minLength": 1 },
         "environment": { "type": "string", "minLength": 1 },
+        "templateId": { "type": "string", "minLength": 1 },
+        "templateVersion": { "type": "integer", "minimum": 1 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
