@@ -9,6 +9,8 @@ export interface FabricTask {
   target?: "vscode" | "fabric" | "toolbox";
   resourceKey?: string;
   dependsOn?: string[];
+  statusChangedAt?: string;
+  completedAt?: string;
 }
 
 export interface FabricResource {
@@ -220,6 +222,26 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
   };
 }
 
+export function transitionTaskStatus(
+  task: FabricTask,
+  status: TaskStatus,
+  at = new Date().toISOString()
+): FabricTask {
+  if (task.status === status) {
+    return task;
+  }
+
+  task.status = status;
+  task.statusChangedAt = at;
+  if (status === "done") {
+    task.completedAt = at;
+  } else {
+    delete task.completedAt;
+  }
+
+  return task;
+}
+
 export function getUnmetDependencyIds(
   manifest: FabricProjectManifest,
   task: FabricTask
@@ -347,7 +369,12 @@ export function renderHandoff(manifest: FabricProjectManifest): string {
             ? ` · resource: ${task.resourceKey} recorded`
             : ` · resource: ${task.resourceKey} missing`
           : "";
-        return `- ${task.title} (${task.phase})${resourceState}`;
+        const timing = task.completedAt
+          ? ` · completed: ${task.completedAt}`
+          : task.statusChangedAt
+            ? ` · status changed: ${task.statusChangedAt}`
+            : "";
+        return `- ${task.title} (${task.phase})${resourceState}${timing}`;
       }).join("\n")
     : "- None";
 
@@ -365,6 +392,15 @@ export function renderHandoff(manifest: FabricProjectManifest): string {
   const templateLabel = manifest.project.templateId
     ? `${manifest.project.templateId}${manifest.project.templateVersion ? ` v${manifest.project.templateVersion}` : ""}`
     : "custom";
+  const activity = manifest.tasks
+    .filter(task => task.statusChangedAt)
+    .sort((left, right) =>
+      String(right.statusChangedAt).localeCompare(String(left.statusChangedAt))
+    )
+    .map(task =>
+      `- ${task.statusChangedAt} — ${task.title}: ${task.status.replace("_", " ")}`
+    )
+    .join("\n");
 
   return `# Fabric project handoff: ${manifest.project.name}
 
@@ -395,6 +431,9 @@ ${taskLines(remaining)}
 
 ## Resources
 ${resources}
+
+## Recent task activity
+${activity || "- No recorded status transitions yet"}
 
 ## Validation
 ${validation}
@@ -467,6 +506,13 @@ export function validateManifestDocument(value: unknown): string[] {
           (!Array.isArray(rawTask.dependsOn) ||
            !rawTask.dependsOn.every(item => typeof item === "string"))) {
         errors.push(`tasks[${index}].dependsOn must be an array of strings.`);
+      }
+
+      for (const key of ["statusChangedAt", "completedAt"]) {
+        if (rawTask[key] !== undefined &&
+            (typeof rawTask[key] !== "string" || !rawTask[key])) {
+          errors.push(`tasks[${index}].${key} must be a non-empty string when present.`);
+        }
       }
     });
   }
