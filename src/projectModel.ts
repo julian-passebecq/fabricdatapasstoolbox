@@ -8,6 +8,7 @@ export interface FabricTask {
   description?: string;
   target?: "vscode" | "fabric" | "toolbox";
   resourceKey?: string;
+  dependsOn?: string[];
 }
 
 export interface FabricResource {
@@ -45,9 +46,10 @@ export interface ProjectProgress {
 }
 
 export interface ProjectIssue {
-  code: "done_resource_missing";
+  code: "done_resource_missing" | "dependency_incomplete";
   taskId: string;
-  resourceKey: string;
+  resourceKey?: string;
+  dependencyId?: string;
   message: string;
 }
 
@@ -85,6 +87,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Create or select Fabric workspace",
         phase: "Foundation",
         status: "todo",
+        dependsOn: ["fabric-login"],
         target: "fabric",
         resourceKey: "workspace",
         description: "Create the Foil'o development workspace or select the workspace that will own this project."
@@ -94,6 +97,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Connect project source control",
         phase: "Foundation",
         status: "todo",
+        dependsOn: ["workspace"],
         target: "vscode",
         description: "Keep project definitions and Datapass state under Git so changes and decisions remain inspectable."
       },
@@ -102,6 +106,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Create Eventstream for turbine telemetry",
         phase: "Ingestion",
         status: "todo",
+        dependsOn: ["workspace"],
         target: "fabric",
         resourceKey: "eventstream",
         description: "Receive the wind-turbine event stream that will ultimately come from the Oracle VM / Kafka simulator."
@@ -111,6 +116,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Configure Eventhouse / KQL destination",
         phase: "Ingestion",
         status: "todo",
+        dependsOn: ["eventstream"],
         target: "fabric",
         resourceKey: "eventhouse",
         description: "Persist and query real-time telemetry through Eventhouse / KQL."
@@ -120,6 +126,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Create Lakehouse",
         phase: "Medallion",
         status: "todo",
+        dependsOn: ["workspace"],
         target: "fabric",
         resourceKey: "lakehouse",
         description: "Create the Lakehouse used for the Bronze, Silver and Gold learning path."
@@ -129,6 +136,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Implement Bronze ingestion",
         phase: "Medallion",
         status: "todo",
+        dependsOn: ["eventstream","lakehouse"],
         target: "fabric",
         resourceKey: "notebook-bronze",
         description: "Land raw telemetry with minimal transformation and enough metadata for replay/debugging."
@@ -138,6 +146,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Implement Silver transformations",
         phase: "Medallion",
         status: "todo",
+        dependsOn: ["bronze"],
         target: "fabric",
         resourceKey: "notebook-silver",
         description: "Clean, type, deduplicate and enrich turbine telemetry into reusable analytical tables."
@@ -147,6 +156,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Build Gold business tables",
         phase: "Medallion",
         status: "todo",
+        dependsOn: ["silver"],
         target: "fabric",
         resourceKey: "notebook-gold",
         description: "Create KPI-ready aggregates such as production, availability and turbine health summaries."
@@ -156,6 +166,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Create semantic model",
         phase: "Serving",
         status: "todo",
+        dependsOn: ["gold"],
         target: "fabric",
         resourceKey: "semantic-model",
         description: "Model Gold data for reporting with explicit business measures and relationships."
@@ -165,6 +176,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Create Power BI report",
         phase: "Serving",
         status: "todo",
+        dependsOn: ["semantic-model"],
         target: "fabric",
         resourceKey: "report",
         description: "Build the final operational/business report from the curated semantic layer."
@@ -174,6 +186,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Configure monitoring",
         phase: "Operations",
         status: "todo",
+        dependsOn: ["eventstream","lakehouse"],
         target: "toolbox",
         description: "Select the useful Fabric Toolbox monitoring assets instead of recreating monitoring from scratch."
       },
@@ -182,6 +195,7 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
         title: "Configure deployment / CI-CD",
         phase: "Operations",
         status: "todo",
+        dependsOn: ["git","power-bi"],
         target: "toolbox",
         resourceKey: "deployment-pipeline",
         description: "Define promotion and deployment flow once the development architecture is stable."
@@ -205,10 +219,17 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
 export function getProgress(manifest: FabricProjectManifest): ProjectProgress {
   const done = manifest.tasks.filter(task => task.status === "done").length;
   const total = manifest.tasks.length;
+  const completed = new Set(
+    manifest.tasks.filter(task => task.status === "done").map(task => task.id)
+  );
+  const isReady = (task: FabricTask) =>
+    (task.dependsOn ?? []).every(dependencyId => completed.has(dependencyId));
+
   const next =
-    manifest.tasks.find(task => task.status === "in_progress") ??
-    manifest.tasks.find(task => task.status === "todo") ??
-    manifest.tasks.find(task => task.status === "blocked");
+    manifest.tasks.find(task => task.status === "in_progress" && isReady(task)) ??
+    manifest.tasks.find(task => task.status === "todo" && isReady(task)) ??
+    manifest.tasks.find(task => task.status === "blocked" && isReady(task)) ??
+    manifest.tasks.find(task => task.status !== "done");
 
   return {
     done,
@@ -219,18 +240,35 @@ export function getProgress(manifest: FabricProjectManifest): ProjectProgress {
 }
 
 export function getProjectIssues(manifest: FabricProjectManifest): ProjectIssue[] {
-  return manifest.tasks.flatMap(task => {
-    if (task.status !== "done" || !task.resourceKey || manifest.resources[task.resourceKey]) {
-      return [];
+  const tasksById = new Map(manifest.tasks.map(task => [task.id, task]));
+  const issues: ProjectIssue[] = [];
+
+  for (const task of manifest.tasks) {
+    if (task.status === "done" && task.resourceKey && !manifest.resources[task.resourceKey]) {
+      issues.push({
+        code: "done_resource_missing",
+        taskId: task.id,
+        resourceKey: task.resourceKey,
+        message: `Task "${task.title}" is done but resource "${task.resourceKey}" is not recorded.`
+      });
     }
 
-    return [{
-      code: "done_resource_missing" as const,
-      taskId: task.id,
-      resourceKey: task.resourceKey,
-      message: `Task "${task.title}" is done but resource "${task.resourceKey}" is not recorded.`
-    }];
-  });
+    if (task.status === "done" || task.status === "in_progress") {
+      for (const dependencyId of task.dependsOn ?? []) {
+        const dependency = tasksById.get(dependencyId);
+        if (!dependency || dependency.status !== "done") {
+          issues.push({
+            code: "dependency_incomplete",
+            taskId: task.id,
+            dependencyId,
+            message: `Task "${task.title}" is ${task.status.replace("_", " ")} but dependency "${dependency?.title ?? dependencyId}" is not done.`
+          });
+        }
+      }
+    }
+  }
+
+  return issues;
 }
 
 export function renderHandoff(manifest: FabricProjectManifest): string {
