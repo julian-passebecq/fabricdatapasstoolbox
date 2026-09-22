@@ -17,6 +17,8 @@ export interface FabricResource {
   name?: string;
   id?: string;
   notes?: string;
+  recordedAt?: string;
+  updatedAt?: string;
 }
 
 export interface FabricProjectManifest {
@@ -222,6 +224,20 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
   };
 }
 
+export function mergeFabricResource(
+  existing: FabricResource | undefined,
+  incoming: FabricResource,
+  at = new Date().toISOString()
+): FabricResource {
+  return {
+    name: incoming.name ?? existing?.name,
+    id: incoming.id ?? existing?.id,
+    notes: incoming.notes ?? existing?.notes,
+    recordedAt: existing?.recordedAt ?? incoming.recordedAt ?? at,
+    updatedAt: at
+  };
+}
+
 export function transitionTaskStatus(
   task: FabricTask,
   status: TaskStatus,
@@ -381,7 +397,7 @@ export function renderHandoff(manifest: FabricProjectManifest): string {
   const resourceEntries = Object.entries(manifest.resources);
   const resources = resourceEntries.length
     ? resourceEntries
-        .map(([key, value]) => `- **${key}**: ${value.name ?? "(unnamed)"}${value.id ? ` — ${value.id}` : ""}${value.notes ? ` — ${value.notes}` : ""}`)
+        .map(([key, value]) => `- **${key}**: ${value.name ?? "(unnamed)"}${value.id ? ` — ${value.id}` : ""}${value.notes ? ` — ${value.notes}` : ""}${value.recordedAt ? ` — recorded: ${value.recordedAt}` : ""}${value.updatedAt && value.updatedAt !== value.recordedAt ? ` — updated: ${value.updatedAt}` : ""}`)
         .join("\n")
     : "- None recorded yet";
 
@@ -480,6 +496,19 @@ export function validateManifestDocument(value: unknown): string[] {
 
   if (!isRecord(value.resources)) {
     errors.push("resources must be an object.");
+  } else {
+    for (const [resourceKey, rawResource] of Object.entries(value.resources)) {
+      if (!isRecord(rawResource)) {
+        errors.push(`resources.${resourceKey} must be an object.`);
+        continue;
+      }
+      for (const key of ["name", "id", "notes", "recordedAt", "updatedAt"]) {
+        if (rawResource[key] !== undefined &&
+            (typeof rawResource[key] !== "string" || !rawResource[key])) {
+          errors.push(`resources.${resourceKey}.${key} must be a non-empty string when present.`);
+        }
+      }
+    }
   }
 
   if (!Array.isArray(value.tasks)) {
