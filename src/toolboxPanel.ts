@@ -127,6 +127,19 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
     const template = manifest?.project.templateId
       ? PROJECT_TEMPLATES.find(item => item.id === manifest.project.templateId)
       : undefined;
+    const recentActivity = manifest
+      ? manifest.tasks
+          .filter(task => task.statusChangedAt)
+          .sort((left, right) =>
+            String(right.statusChangedAt).localeCompare(String(left.statusChangedAt))
+          )
+          .slice(0, 4)
+          .map(task => ({
+            title: task.title,
+            status: task.status,
+            at: task.statusChangedAt
+          }))
+      : [];
     await this.view.webview.postMessage({
       type: "state",
       environment,
@@ -159,6 +172,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
             resourceCount: Object.keys(manifest.resources).length,
             issueCount: issues.length,
             readyTitles: readyTasks.map(task => task.title),
+            recentActivity,
             architectureStages: [
               { label: "Sources", items: manifest.architecture.source },
               { label: "Ingestion", items: manifest.architecture.ingestion },
