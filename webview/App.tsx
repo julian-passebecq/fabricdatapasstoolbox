@@ -41,11 +41,17 @@ type ProjectSummary = {
   }>;
 };
 
+type ManifestStatus = {
+  exists: boolean;
+  errors: string[];
+};
+
 type ExtensionState = {
   environment: Environment;
   runtime: Runtime;
   tools: Tool[];
   catalogItems: CatalogItem[];
+  manifestStatus: ManifestStatus;
   project?: ProjectSummary;
 };
 
@@ -78,7 +84,11 @@ const emptyState: ExtensionState = {
     portableMcpConfigured: false
   },
   tools: [],
-  catalogItems: []
+  catalogItems: [],
+  manifestStatus: {
+    exists: false,
+    errors: []
+  }
 };
 
 export function App(): React.JSX.Element {
@@ -100,6 +110,7 @@ export function App(): React.JSX.Element {
           runtime: event.data.runtime,
           tools: Array.isArray(event.data.tools) ? event.data.tools : [],
           catalogItems: Array.isArray(event.data.catalogItems) ? event.data.catalogItems : [],
+          manifestStatus: event.data.manifestStatus ?? { exists: false, errors: [] },
           project: event.data.project
         });
       } else if (event.data?.type === "toolResult") {
@@ -198,6 +209,17 @@ export function App(): React.JSX.Element {
             <button className="secondary" onClick={() => command("checklist")}>Open checklist</button>
             <button className="secondary" onClick={() => command("handoff")}>AI handoff</button>
           </div>
+        </section>
+      ) : state.manifestStatus.exists && state.manifestStatus.errors.length > 0 ? (
+        <section className="emptyProject manifestInvalid">
+          <strong>Project manifest is invalid.</strong>
+          <p>Datapass will not overwrite it. Fix the manifest before continuing.</p>
+          <ul className="manifestErrorList">
+            {state.manifestStatus.errors.slice(0, 5).map(error => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+          <button onClick={() => command("openManifest")}>Open fabric.project.json</button>
         </section>
       ) : (
         <section className="emptyProject">
