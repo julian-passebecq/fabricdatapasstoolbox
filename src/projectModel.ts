@@ -223,7 +223,7 @@ export function getUnmetDependencies(
   const tasksById = new Map(manifest.tasks.map(candidate => [candidate.id, candidate]));
   return (task.dependsOn ?? [])
     .map(dependencyId => tasksById.get(dependencyId))
-    .filter((dependency): dependency is FabricTask => Boolean(dependency) && dependency.status !== "done");
+    .filter((dependency): dependency is FabricTask => dependency !== undefined && dependency.status !== "done");
 }
 
 export function getReadyTasks(manifest: FabricProjectManifest): FabricTask[] {
