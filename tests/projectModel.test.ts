@@ -4,6 +4,8 @@ import {
   defaultFoilManifest,
   getProgress,
   getProjectIssues,
+  getReadyTasks,
+  getUnmetDependencies,
   renderHandoff
 } from "../src/projectModel";
 
@@ -116,4 +118,16 @@ test("completed task with incomplete dependency is reported", () => {
     issue.taskId === "silver" &&
     issue.dependencyId === "bronze"
   ));
+});
+
+
+test("ready task helpers expose blocked and actionable steps", () => {
+  const manifest = defaultFoilManifest("2026-09-22T00:00:00.000Z");
+  const silver = manifest.tasks.find(task => task.id === "silver")!;
+
+  assert.deepEqual(getUnmetDependencies(manifest, silver).map(task => task.id), ["bronze"]);
+  assert.deepEqual(getReadyTasks(manifest).map(task => task.id), ["fabric-login"]);
+
+  manifest.tasks.find(task => task.id === "fabric-login")!.status = "done";
+  assert.ok(getReadyTasks(manifest).some(task => task.id === "workspace"));
 });
