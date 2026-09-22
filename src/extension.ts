@@ -5,6 +5,7 @@ import {
   exportHandoff,
   getProgress,
   getProjectIssues,
+  getUnmetDependencies,
   initializeFoilProject,
   manifestUri,
   readManifest,
@@ -60,6 +61,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!manifest || !task) {
       void vscode.window.showWarningMessage("Checklist task not found.");
       return;
+    }
+
+    const unmetDependencies = getUnmetDependencies(manifest, task);
+    if (unmetDependencies.length) {
+      const action = await vscode.window.showWarningMessage(
+        `"${task.title}" is blocked by ${unmetDependencies.map(item => `"${item.title}"`).join(", ")}.`,
+        "Open first dependency",
+        "Mark done anyway"
+      );
+
+      if (action === "Open first dependency") {
+        await vscode.commands.executeCommand(
+          "datapassFabric.taskAction",
+          unmetDependencies[0].id
+        );
+        return;
+      }
+
+      if (action !== "Mark done anyway") {
+        return;
+      }
     }
 
     if (task.resourceKey && !manifest.resources[task.resourceKey]) {
