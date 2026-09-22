@@ -9,6 +9,7 @@ import {
   initializeProject,
   manifestUri,
   readManifest,
+  readManifestResult,
   setTaskStatus,
   TaskStatus,
   upsertResource
@@ -114,11 +115,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand("datapassFabric.initializeProject", async () => {
       try {
-        const existing = await readManifest();
-        if (existing) {
-          void vscode.window.showInformationMessage(
-            `Fabric project '${existing.project.name}' is already initialized in this folder.`
-          );
+        const existing = await readManifestResult();
+        if (existing.exists) {
+          if (existing.manifest) {
+            void vscode.window.showInformationMessage(
+              `Fabric project '${existing.manifest.project.name}' is already initialized in this folder.`
+            );
+          } else {
+            void vscode.window.showErrorMessage(
+              `Existing fabric.project.json is invalid: ${existing.errors.join(" ")}`
+            );
+            await vscode.commands.executeCommand("datapassFabric.openManifest");
+          }
           return;
         }
 
@@ -200,12 +208,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
 
     vscode.commands.registerCommand("datapassFabric.validateProject", async () => {
-      const manifest = await readManifest();
-      if (!manifest) {
+      const readResult = await readManifestResult();
+      if (!readResult.exists) {
         void vscode.window.showWarningMessage("Initialize a Fabric project first.");
         return;
       }
+      if (!readResult.manifest) {
+        const action = await vscode.window.showErrorMessage(
+          `Project manifest is invalid. ${readResult.errors.join(" ")}`,
+          "Open manifest"
+        );
+        if (action === "Open manifest") {
+          await vscode.commands.executeCommand("datapassFabric.openManifest");
+        }
+        return;
+      }
 
+      const manifest = readResult.manifest;
       const issues = getProjectIssues(manifest);
       if (issues.length === 0) {
         void vscode.window.showInformationMessage(
