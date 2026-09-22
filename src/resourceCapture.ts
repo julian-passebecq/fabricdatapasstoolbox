@@ -19,6 +19,8 @@ const resourceChoices: ResourceChoice[] = [
   { key: "eventstream", label: "$(radio-tower) Eventstream", description: "Real-time ingestion" },
   { key: "eventhouse", label: "$(database) Eventhouse", description: "KQL / real-time store" },
   { key: "lakehouse", label: "$(database) Lakehouse", description: "Medallion storage" },
+  { key: "data-pipeline", label: "$(type-hierarchy) Data Pipeline", description: "Batch / Data Factory ingestion" },
+  { key: "warehouse", label: "$(server) Warehouse", description: "SQL serving layer" },
   { key: "notebook-bronze", label: "$(notebook) Bronze notebook", description: "Raw ingestion" },
   { key: "notebook-silver", label: "$(notebook) Silver notebook", description: "Cleaning / enrichment" },
   { key: "notebook-gold", label: "$(notebook) Gold notebook", description: "Business aggregates" },
