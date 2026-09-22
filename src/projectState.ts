@@ -3,6 +3,7 @@ import {
   FabricProjectManifest,
   FabricResource,
   MANIFEST_NAME,
+  mergeFabricResource,
   renderHandoff,
   TaskStatus,
   transitionTaskStatus,
@@ -155,7 +156,7 @@ export async function upsertResource(
     return undefined;
   }
 
-  manifest.resources[key] = value;
+  manifest.resources[key] = mergeFabricResource(manifest.resources[key], value);
   await writeManifest(manifest);
   return manifest;
 }
