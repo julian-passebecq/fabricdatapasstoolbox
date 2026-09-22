@@ -86,3 +86,34 @@ test("completed checklist has no next action", () => {
   assert.equal(progress.next, undefined);
   assert.match(renderHandoff(manifest), /Project checklist complete/);
 });
+
+
+test("next action respects task dependencies", () => {
+  const manifest = defaultFoilManifest("2026-09-22T00:00:00.000Z");
+  manifest.tasks.find(task => task.id === "silver")!.status = "in_progress";
+
+  const progress = getProgress(manifest);
+  const issues = getProjectIssues(manifest);
+
+  assert.equal(progress.next?.id, "fabric-login");
+  assert.ok(issues.some(issue =>
+    issue.code === "dependency_incomplete" &&
+    issue.taskId === "silver" &&
+    issue.dependencyId === "bronze"
+  ));
+});
+
+test("completed task with incomplete dependency is reported", () => {
+  const manifest = defaultFoilManifest("2026-09-22T00:00:00.000Z");
+  const silver = manifest.tasks.find(task => task.id === "silver")!;
+  silver.status = "done";
+  manifest.resources["notebook-silver"] = { name: "02-silver" };
+
+  const issues = getProjectIssues(manifest);
+
+  assert.ok(issues.some(issue =>
+    issue.code === "dependency_incomplete" &&
+    issue.taskId === "silver" &&
+    issue.dependencyId === "bronze"
+  ));
+});
