@@ -396,3 +396,19 @@ code {
   min-width: 52px;
   padding: 5px 8px;
 }
+
+
+.catalogSearch {
+  width: 100%;
+  margin: 0 0 8px;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 4px;
+  padding: 7px 8px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+}
+
+.catalogSearch:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
