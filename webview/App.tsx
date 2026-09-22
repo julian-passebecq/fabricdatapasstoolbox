@@ -31,6 +31,12 @@ type ProjectSummary = {
   total: number;
   percent: number;
   nextTitle?: string;
+  resourceCount: number;
+  issueCount: number;
+  architectureStages: Array<{
+    label: string;
+    items: string[];
+  }>;
 };
 
 type ExtensionState = {
@@ -153,9 +159,35 @@ export function App(): React.JSX.Element {
           <p className="projectMeta">
             {state.project.done}/{state.project.total} complete · {state.project.type} · {state.project.environment}
           </p>
+          <div className="projectHealth">
+            <span>{state.project.resourceCount} resources recorded</span>
+            <span className={state.project.issueCount ? "healthIssue" : "healthOk"}>
+              {state.project.issueCount
+                ? `${state.project.issueCount} validation issue${state.project.issueCount === 1 ? "" : "s"}`
+                : "State consistent"}
+            </span>
+          </div>
           <p className="next">
             <strong>Next:</strong> {state.project.nextTitle ?? "Checklist complete"}
           </p>
+          <div className="architecture">
+            <span className="smallLabel">ARCHITECTURE</span>
+            <div className="architectureFlow">
+              {state.project.architectureStages.map((stage, index) => (
+                <React.Fragment key={stage.label}>
+                  <div className="architectureStage">
+                    <strong>{stage.label}</strong>
+                    <div className="architectureItems">
+                      {stage.items.map(item => <span key={item}>{item}</span>)}
+                    </div>
+                  </div>
+                  {index < state.project!.architectureStages.length - 1 && (
+                    <span className="architectureArrow" aria-hidden="true">→</span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
           <div className="buttonRow">
             <button onClick={() => command("checklist")}>Open checklist</button>
             <button className="secondary" onClick={() => command("handoff")}>AI handoff</button>
