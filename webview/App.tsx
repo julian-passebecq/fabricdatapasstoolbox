@@ -527,6 +527,12 @@ export function App(): React.JSX.Element {
 
           <div className="managementGrid">
             <ManagementAction
+              title="Check module"
+              description="Show installed MicrosoftFabricMgmt versions and paths without changing the machine."
+              onCopy={() => fabricMgmt("status", "copy")}
+              onRun={() => fabricMgmt("status", "run")}
+            />
+            <ManagementAction
               title="Install module"
               description="Install MicrosoftFabricMgmt from PowerShell Gallery for the current user."
               onCopy={() => fabricMgmt("install", "copy")}
@@ -645,7 +651,7 @@ export function App(): React.JSX.Element {
   }
 
   function fabricMgmt(
-    operation: "install" | "connect" | "workspaces" | "lakehouses" | "warehouses" | "pipelines",
+    operation: "status" | "install" | "connect" | "workspaces" | "lakehouses" | "warehouses" | "pipelines",
     action: "copy" | "run"
   ): void {
     setResult("");
