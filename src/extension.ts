@@ -17,7 +17,7 @@ import {
 import { captureResource } from "./resourceCapture";
 import { ToolboxViewProvider } from "./toolboxPanel";
 import { configureToolboxRoot, openWorkspaceMcpConfig } from "./toolRunners";
-import { PROJECT_TEMPLATES, ProjectTemplateId } from "./projectTemplates";
+import { getProjectTemplateStatus, PROJECT_TEMPLATES, ProjectTemplateId } from "./projectTemplates";
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const checklist = new ChecklistProvider();
@@ -375,6 +375,58 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await vscode.commands.executeCommand("datapassFabric.exportHandoff");
       } else if (action === "Open Fabric") {
         await openFabricHome();
+      }
+    }),
+
+    vscode.commands.registerCommand("datapassFabric.checkTemplateStatus", async () => {
+      const result = await readManifestResult();
+      if (!result.exists) {
+        void vscode.window.showWarningMessage("Initialize a Fabric project first.");
+        return;
+      }
+      if (!result.manifest) {
+        const action = await vscode.window.showErrorMessage(
+          `Project manifest is invalid. ${result.errors.join(" ")}`,
+          "Open manifest"
+        );
+        if (action === "Open manifest") {
+          await vscode.commands.executeCommand("datapassFabric.openManifest");
+        }
+        return;
+      }
+
+      const status = getProjectTemplateStatus(result.manifest);
+      if (status.kind === "current") {
+        void vscode.window.showInformationMessage(
+          `${status.templateName} is current at v${status.projectVersion}.`
+        );
+        return;
+      }
+      if (status.kind === "custom") {
+        void vscode.window.showInformationMessage(
+          "This project is custom and is not tied to a Datapass template."
+        );
+        return;
+      }
+
+      const message =
+        status.kind === "outdated"
+          ? `${status.templateName} is at v${status.projectVersion}; Datapass ships v${status.currentVersion}. Automatic migration is intentionally disabled.`
+          : status.kind === "ahead"
+            ? `This project uses ${status.templateName} v${status.projectVersion}, ahead of the installed Datapass template v${status.currentVersion}. No downgrade will be attempted.`
+            : status.kind === "unversioned"
+              ? `${status.templateName} has no recorded template version. Current Datapass template is v${status.currentVersion}.`
+              : `Unknown project template: ${status.templateId ?? "unspecified"}. Datapass will preserve it as-is.`;
+
+      const action = await vscode.window.showWarningMessage(
+        message,
+        "Open manifest",
+        "Export AI handoff"
+      );
+      if (action === "Open manifest") {
+        await vscode.commands.executeCommand("datapassFabric.openManifest");
+      } else if (action === "Export AI handoff") {
+        await vscode.commands.executeCommand("datapassFabric.exportHandoff");
       }
     }),
 
