@@ -7,6 +7,10 @@ const tenantId = "22222222-2222-4222-8222-222222222222";
 
 test("MicrosoftFabricMgmt builder emits explicit safe commands", () => {
   assert.equal(
+    buildFabricMgmtCommand("status"),
+    "Get-Module -ListAvailable -Name MicrosoftFabricMgmt | Select-Object Name, Version, Path"
+  );
+  assert.equal(
     buildFabricMgmtCommand("install"),
     "Install-Module -Name MicrosoftFabricMgmt -Scope CurrentUser -Repository PSGallery"
   );
