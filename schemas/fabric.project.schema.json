@@ -56,7 +56,12 @@
           },
           "description": { "type": "string" },
           "target": { "enum": ["vscode", "fabric", "toolbox"] },
-          "resourceKey": { "type": "string", "minLength": 1 }
+          "resourceKey": { "type": "string", "minLength": 1 },
+          "dependsOn": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          }
         },
         "additionalProperties": false
       }
