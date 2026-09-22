@@ -314,9 +314,10 @@ export function renderHandoff(manifest: FabricProjectManifest): string {
         .join("\n")
     : "- None recorded yet";
 
+  const readyNow = getReadyTasks(manifest);
   const validation = issues.length
     ? issues.map(issue => `- ${issue.message}`).join("\n")
-    : "- No task/resource consistency issues detected";
+    : "- No task/resource or dependency-sequencing issues detected";
 
   return `# Fabric project handoff: ${manifest.project.name}
 
@@ -331,6 +332,9 @@ ${architecture}
 
 ## Next action
 ${progress.next ? `- ${progress.next.title} (${progress.next.phase}) — status: ${progress.next.status}` : "- Project checklist complete"}
+
+## Ready now
+${readyNow.length ? readyNow.map(task => `- ${task.title} (${task.phase}) — status: ${task.status}`).join("\n") : "- None"}
 
 ## Completed
 ${taskLines(completed)}
