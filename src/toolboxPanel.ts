@@ -7,6 +7,7 @@ import {
 import { getProgress, getProjectIssues, getReadyTasks, readManifest, readManifestResult } from "./projectState";
 import { CURATED_TOOLBOX_ITEMS, findToolUrl, PRIMARY_TOOLS } from "./toolboxCatalog";
 import { PROJECT_TEMPLATES } from "./projectTemplates";
+import { FabricMgmtOperation } from "./fabricMgmtCommands";
 import {
   configureToolboxRoot,
   copyAssessmentCommand,
@@ -124,8 +125,8 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
           }
 
           const command = message.action === "run"
-            ? await runFabricMgmtCommand(operation as any, input)
-            : await copyFabricMgmtCommand(operation as any, input);
+            ? await runFabricMgmtCommand(operation as FabricMgmtOperation, input)
+            : await copyFabricMgmtCommand(operation as FabricMgmtOperation, input);
           void vscode.window.showInformationMessage(
             message.action === "run"
               ? "MicrosoftFabricMgmt command started in PowerShell 7."
