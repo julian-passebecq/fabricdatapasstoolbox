@@ -1,12 +1,15 @@
 import * as vscode from "vscode";
 import {
-  defaultFoilManifest,
   FabricProjectManifest,
   FabricResource,
   MANIFEST_NAME,
   renderHandoff,
   TaskStatus
 } from "./projectModel";
+import {
+  createProjectFromTemplate,
+  ProjectTemplateId
+} from "./projectTemplates";
 
 export * from "./projectModel";
 
@@ -48,7 +51,9 @@ export async function writeManifest(manifest: FabricProjectManifest): Promise<vo
   await vscode.workspace.fs.writeFile(uri, textEncoder.encode(content));
 }
 
-export async function initializeFoilProject(): Promise<FabricProjectManifest> {
+export async function initializeProject(
+  templateId: ProjectTemplateId = "foil-wind-realtime"
+): Promise<FabricProjectManifest> {
   const root = getWorkspaceRoot();
   if (!root) {
     throw new Error("Open a VS Code folder before initializing a Fabric project.");
@@ -59,9 +64,13 @@ export async function initializeFoilProject(): Promise<FabricProjectManifest> {
     return existing;
   }
 
-  const manifest = defaultFoilManifest();
+  const manifest = createProjectFromTemplate(templateId);
   await writeManifest(manifest);
   return manifest;
+}
+
+export async function initializeFoilProject(): Promise<FabricProjectManifest> {
+  return initializeProject("foil-wind-realtime");
 }
 
 export async function setTaskStatus(
