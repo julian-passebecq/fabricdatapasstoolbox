@@ -246,6 +246,9 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
     } else if (command === "validate") {
       await vscode.commands.executeCommand("datapassFabric.validateProject");
       await this.refresh();
+    } else if (command === "recordResource") {
+      await vscode.commands.executeCommand("datapassFabric.recordResource");
+      await this.refresh();
     } else if (command === "configureToolboxRoot") {
       await configureToolboxRoot();
       await this.refresh();
