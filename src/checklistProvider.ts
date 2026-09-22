@@ -7,6 +7,7 @@ import {
   getUnmetDependencies,
   readManifestResult
 } from "./projectState";
+import { PROJECT_TEMPLATES } from "./projectTemplates";
 
 type ChecklistNode = ProjectNode | NextNode | PhaseNode | TaskNode | InfoNode;
 
@@ -52,12 +53,19 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
       const progress = getProgress(element.manifest);
       const resourceCount = Object.keys(element.manifest.resources).length;
       const issues = getProjectIssues(element.manifest);
+      const template = element.manifest.project.templateId
+        ? PROJECT_TEMPLATES.find(candidate => candidate.id === element.manifest.project.templateId)
+        : undefined;
+      const templateVersion = element.manifest.project.templateVersion;
+      const templateSuffix = template
+        ? " · " + template.name + (templateVersion ? " v" + templateVersion : "")
+        : "";
       const item = new vscode.TreeItem(
         element.manifest.project.name,
         vscode.TreeItemCollapsibleState.None
       );
       item.iconPath = new vscode.ThemeIcon(issues.length ? "warning" : "graph");
-      item.description = `${progress.done}/${progress.total} · ${progress.percent}% · ${resourceCount} resources${issues.length ? ` · ${issues.length} issue${issues.length === 1 ? "" : "s"}` : ""}`;
+      item.description = `${progress.done}/${progress.total} · ${progress.percent}% · ${resourceCount} resources${issues.length ? ` · ${issues.length} issue${issues.length === 1 ? "" : "s"}` : ""}${templateSuffix}`;
       item.tooltip = new vscode.MarkdownString(
         `**${element.manifest.project.name}**\n\nType: ${element.manifest.project.type}\n\nEnvironment: ${element.manifest.project.environment}\n\nProgress: ${progress.percent}%\n\nResources recorded: ${resourceCount}\n\nValidation issues: ${issues.length}`
       );
