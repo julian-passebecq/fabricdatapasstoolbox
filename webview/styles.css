@@ -512,3 +512,43 @@ button.templateCheck {
 .managementButtons button {
   padding: 6px 8px;
 }
+
+
+.guideSteps {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.guideStep {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 5px;
+  background: var(--vscode-editorWidget-background);
+}
+
+.guideNumber {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.guideStep strong {
+  font-size: 11px;
+}
+
+.guideStep p {
+  margin: 3px 0 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+}
