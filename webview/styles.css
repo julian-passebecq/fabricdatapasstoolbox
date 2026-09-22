@@ -428,3 +428,10 @@ code {
 .manifestErrorList li + li {
   margin-top: 4px;
 }
+
+
+.templateMeta {
+  margin: 5px 0 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+}
