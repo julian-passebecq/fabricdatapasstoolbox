@@ -40,6 +40,11 @@ type ProjectSummary = {
   resourceCount: number;
   issueCount: number;
   readyTitles: string[];
+  recentActivity: Array<{
+    title: string;
+    status: string;
+    at?: string;
+  }>;
   architectureStages: Array<{
     label: string;
     items: string[];
@@ -198,6 +203,17 @@ export function App(): React.JSX.Element {
             <p className="readyNow">
               <strong>Ready now:</strong> {state.project.readyTitles.join(" · ")}
             </p>
+          )}
+          {state.project.recentActivity.length > 0 && (
+            <div className="recentActivity">
+              <span className="smallLabel">RECENT ACTIVITY</span>
+              {state.project.recentActivity.map(item => (
+                <div className="activityRow" key={`${item.title}-${item.at}`}>
+                  <span>{item.title}</span>
+                  <small>{item.status.replace("_", " ")} · {item.at}</small>
+                </div>
+              ))}
+            </div>
           )}
           <div className="architecture">
             <span className="smallLabel">ARCHITECTURE</span>
