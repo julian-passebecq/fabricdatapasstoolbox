@@ -216,19 +216,30 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
   };
 }
 
+export function getUnmetDependencies(
+  manifest: FabricProjectManifest,
+  task: FabricTask
+): FabricTask[] {
+  const tasksById = new Map(manifest.tasks.map(candidate => [candidate.id, candidate]));
+  return (task.dependsOn ?? [])
+    .map(dependencyId => tasksById.get(dependencyId))
+    .filter((dependency): dependency is FabricTask => Boolean(dependency) && dependency.status !== "done");
+}
+
+export function getReadyTasks(manifest: FabricProjectManifest): FabricTask[] {
+  return manifest.tasks.filter(
+    task => task.status !== "done" && getUnmetDependencies(manifest, task).length === 0
+  );
+}
+
 export function getProgress(manifest: FabricProjectManifest): ProjectProgress {
   const done = manifest.tasks.filter(task => task.status === "done").length;
   const total = manifest.tasks.length;
-  const completed = new Set(
-    manifest.tasks.filter(task => task.status === "done").map(task => task.id)
-  );
-  const isReady = (task: FabricTask) =>
-    (task.dependsOn ?? []).every(dependencyId => completed.has(dependencyId));
-
+  const ready = getReadyTasks(manifest);
   const next =
-    manifest.tasks.find(task => task.status === "in_progress" && isReady(task)) ??
-    manifest.tasks.find(task => task.status === "todo" && isReady(task)) ??
-    manifest.tasks.find(task => task.status === "blocked" && isReady(task)) ??
+    ready.find(task => task.status === "in_progress") ??
+    ready.find(task => task.status === "todo") ??
+    ready.find(task => task.status === "blocked") ??
     manifest.tasks.find(task => task.status !== "done");
 
   return {
