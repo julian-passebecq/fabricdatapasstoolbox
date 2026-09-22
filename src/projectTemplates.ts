@@ -202,3 +202,64 @@ export function defaultContosoManifest(
     ]
   };
 }
+
+
+export type ProjectTemplateStatusKind =
+  | "custom"
+  | "unknown"
+  | "unversioned"
+  | "current"
+  | "outdated"
+  | "ahead";
+
+export interface ProjectTemplateStatus {
+  kind: ProjectTemplateStatusKind;
+  templateId?: string;
+  templateName?: string;
+  projectVersion?: number;
+  currentVersion?: number;
+}
+
+export function getProjectTemplateStatus(
+  manifest: FabricProjectManifest
+): ProjectTemplateStatus {
+  const templateId = manifest.project.templateId;
+  const projectVersion = manifest.project.templateVersion;
+
+  if (!templateId) {
+    return { kind: "custom" };
+  }
+
+  const template = PROJECT_TEMPLATES.find(candidate => candidate.id === templateId);
+  if (!template) {
+    return {
+      kind: "unknown",
+      templateId,
+      projectVersion
+    };
+  }
+
+  if (!projectVersion) {
+    return {
+      kind: "unversioned",
+      templateId,
+      templateName: template.name,
+      currentVersion: template.version
+    };
+  }
+
+  const kind: ProjectTemplateStatusKind =
+    projectVersion < template.version
+      ? "outdated"
+      : projectVersion > template.version
+        ? "ahead"
+        : "current";
+
+  return {
+    kind,
+    templateId,
+    templateName: template.name,
+    projectVersion,
+    currentVersion: template.version
+  };
+}
