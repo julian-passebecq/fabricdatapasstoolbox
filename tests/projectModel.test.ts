@@ -6,6 +6,7 @@ import {
   getProjectIssues,
   getReadyTasks,
   getUnmetDependencies,
+  mergeFabricResource,
   renderHandoff,
   transitionTaskStatus,
   validateManifestDocument
@@ -212,4 +213,28 @@ test("handoff includes recent task activity when transitions were recorded", () 
     handoff,
     /2026-09-22T10:05:00.000Z — Sign in to Microsoft Fabric: done/
   );
+});
+
+
+test("resource recapture preserves original evidence and updates mutable fields", () => {
+  const first = mergeFabricResource(
+    undefined,
+    { name: "foil-dev", id: "workspace-1" },
+    "2026-09-22T09:00:00.000Z"
+  );
+
+  assert.equal(first.recordedAt, "2026-09-22T09:00:00.000Z");
+  assert.equal(first.updatedAt, "2026-09-22T09:00:00.000Z");
+
+  const updated = mergeFabricResource(
+    first,
+    { name: "foil-dev-renamed", notes: "Validated in Fabric" },
+    "2026-09-22T09:30:00.000Z"
+  );
+
+  assert.equal(updated.name, "foil-dev-renamed");
+  assert.equal(updated.id, "workspace-1");
+  assert.equal(updated.notes, "Validated in Fabric");
+  assert.equal(updated.recordedAt, "2026-09-22T09:00:00.000Z");
+  assert.equal(updated.updatedAt, "2026-09-22T09:30:00.000Z");
 });
