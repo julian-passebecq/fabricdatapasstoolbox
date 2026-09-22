@@ -23,6 +23,8 @@ export interface FabricProjectManifest {
     name: string;
     type: string;
     environment: string;
+    templateId?: string;
+    templateVersion?: number;
     createdAt: string;
     updatedAt: string;
   };
@@ -62,6 +64,8 @@ export function defaultFoilManifest(now = new Date().toISOString()): FabricProje
       name: "foil-wind",
       type: "realtime-medallion",
       environment: "dev",
+      templateId: "foil-wind-realtime",
+      templateVersion: 1,
       createdAt: now,
       updatedAt: now
     },
