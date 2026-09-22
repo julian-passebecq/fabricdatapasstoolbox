@@ -85,6 +85,11 @@
         "category": "Datapass Fabric"
       },
       {
+        "command": "datapassFabric.checkTemplateStatus",
+        "title": "Check Project Template Status",
+        "category": "Datapass Fabric"
+      },
+      {
         "command": "datapassFabric.configureToolboxRoot",
         "title": "Configure Local Fabric Toolbox",
         "category": "Datapass Fabric"
