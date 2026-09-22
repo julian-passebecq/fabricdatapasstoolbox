@@ -38,6 +38,7 @@ type ProjectSummary = {
   nextTitle?: string;
   nextTaskId?: string;
   resourceCount: number;
+  workspaceId?: string;
   issueCount: number;
   readyTitles: string[];
   recentActivity: Array<{
@@ -103,12 +104,14 @@ const emptyState: ExtensionState = {
 
 export function App(): React.JSX.Element {
   const [state, setState] = useState<ExtensionState>(emptyState);
-  const [activeTool, setActiveTool] = useState<"security" | "assessment" | null>(null);
+  const [activeTool, setActiveTool] = useState<"security" | "assessment" | "fabricMgmt" | null>(null);
   const [securityUrl, setSecurityUrl] = useState("");
   const [securityUser, setSecurityUser] = useState("");
   const [assessmentSource, setAssessmentSource] = useState<"synapse" | "databricks">("synapse");
   const [assessmentWorkspace, setAssessmentWorkspace] = useState("");
   const [assessmentOutput, setAssessmentOutput] = useState("./fabric-assessment-output");
+  const [fabricMgmtTenantId, setFabricMgmtTenantId] = useState("");
+  const [fabricMgmtWorkspaceId, setFabricMgmtWorkspaceId] = useState("");
   const [catalogQuery, setCatalogQuery] = useState("");
   const [result, setResult] = useState("");
 
@@ -123,6 +126,10 @@ export function App(): React.JSX.Element {
           manifestStatus: event.data.manifestStatus ?? { exists: false, errors: [] },
           project: event.data.project
         });
+        const workspaceId = event.data.project?.workspaceId;
+        if (typeof workspaceId === "string" && workspaceId) {
+          setFabricMgmtWorkspaceId(current => current || workspaceId);
+        }
       } else if (event.data?.type === "toolResult") {
         setResult(String(event.data.command ?? ""));
       } else if (event.data?.type === "toolError") {
@@ -427,6 +434,83 @@ export function App(): React.JSX.Element {
         </section>
       )}
 
+      {activeTool === "fabricMgmt" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Microsoft Fabric Management</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            Guided PowerShell 7 commands for the upstream <code>MicrosoftFabricMgmt</code> module.
+            Datapass does not collect passwords, client secrets, or service-principal credentials.
+          </p>
+
+          <div className="runtimeReady">
+            Explicit actions only. Install is never run automatically. Interactive Fabric authentication remains in PowerShell/browser.
+          </div>
+
+          <label>
+            Tenant ID
+            <input
+              value={fabricMgmtTenantId}
+              onChange={event => setFabricMgmtTenantId(event.target.value)}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            />
+          </label>
+
+          <label>
+            Workspace ID
+            <input
+              value={fabricMgmtWorkspaceId}
+              onChange={event => setFabricMgmtWorkspaceId(event.target.value)}
+              placeholder="workspace GUID"
+            />
+          </label>
+
+          <div className="managementGrid">
+            <ManagementAction
+              title="Install module"
+              description="Install MicrosoftFabricMgmt from PowerShell Gallery for the current user."
+              onCopy={() => fabricMgmt("install", "copy")}
+              onRun={() => fabricMgmt("install", "run")}
+            />
+            <ManagementAction
+              title="Interactive login"
+              description="Import the module and connect to your tenant interactively."
+              onCopy={() => fabricMgmt("connect", "copy")}
+              onRun={() => fabricMgmt("connect", "run")}
+            />
+            <ManagementAction
+              title="List workspaces"
+              description="Read the Fabric workspaces visible to the authenticated account."
+              onCopy={() => fabricMgmt("workspaces", "copy")}
+              onRun={() => fabricMgmt("workspaces", "run")}
+            />
+            <ManagementAction
+              title="List Lakehouses"
+              description="List Lakehouses in the selected workspace."
+              onCopy={() => fabricMgmt("lakehouses", "copy")}
+              onRun={() => fabricMgmt("lakehouses", "run")}
+            />
+            <ManagementAction
+              title="List Warehouses"
+              description="List Warehouses in the selected workspace."
+              onCopy={() => fabricMgmt("warehouses", "copy")}
+              onRun={() => fabricMgmt("warehouses", "run")}
+            />
+            <ManagementAction
+              title="List Data Pipelines"
+              description="List Fabric Data Pipelines in the selected workspace."
+              onCopy={() => fabricMgmt("pipelines", "copy")}
+              onRun={() => fabricMgmt("pipelines", "run")}
+            />
+          </div>
+
+          <button className="linkButton" onClick={() => open("fabricMgmt")}>Open upstream source</button>
+        </section>
+      )}
+
       {result && (
         <section className="resultPanel">
           <span className="smallLabel">LAST GENERATED COMMAND</span>
@@ -459,6 +543,9 @@ export function App(): React.JSX.Element {
     }
     if (tool.id === "assessment") {
       return <button className="linkButton" onClick={() => setActiveTool("assessment")}>Open guided UI</button>;
+    }
+    if (tool.id === "fabricMgmt") {
+      return <button className="linkButton" onClick={() => setActiveTool("fabricMgmt")}>Open guided UI</button>;
     }
     if (tool.id === "mcp") {
       return <button className="linkButton" onClick={() => command("mcpConfig")}>Open MCP config</button>;
@@ -499,6 +586,38 @@ export function App(): React.JSX.Element {
       output: assessmentOutput
     });
   }
+
+  function fabricMgmt(
+    operation: "install" | "connect" | "workspaces" | "lakehouses" | "warehouses" | "pipelines",
+    action: "copy" | "run"
+  ): void {
+    setResult("");
+    vscode.postMessage({
+      type: "fabricMgmt",
+      operation,
+      action,
+      tenantId: fabricMgmtTenantId,
+      workspaceId: fabricMgmtWorkspaceId
+    });
+  }
+}
+
+function ManagementAction(props: {
+  title: string;
+  description: string;
+  onCopy: () => void;
+  onRun: () => void;
+}): React.JSX.Element {
+  return (
+    <div className="managementAction">
+      <strong>{props.title}</strong>
+      <p>{props.description}</p>
+      <div className="managementButtons">
+        <button className="secondary" onClick={props.onCopy}>Copy</button>
+        <button onClick={props.onRun}>Run</button>
+      </div>
+    </div>
+  );
 }
 
 function StatusCard(props: { name: string; value: string; detail: string }): React.JSX.Element {
