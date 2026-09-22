@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datapass.local/schemas/fabric.project.schema.json",
+  "title": "Datapass Fabric Project",
+  "type": "object",
+  "required": ["schemaVersion", "project", "architecture", "resources", "tasks", "decisions"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "project": {
+      "type": "object",
+      "required": ["name", "type", "environment", "createdAt", "updatedAt"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "environment": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "architecture": {
+      "type": "object",
+      "required": ["source", "ingestion", "storage", "layers", "serving"],
+      "properties": {
+        "source": { "type": "array", "items": { "type": "string" } },
+        "ingestion": { "type": "array", "items": { "type": "string" } },
+        "storage": { "type": "array", "items": { "type": "string" } },
+        "layers": { "type": "array", "items": { "type": "string" } },
+        "serving": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "id": { "type": "string" },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "phase", "status"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "phase": { "type": "string", "minLength": 1 },
+          "status": {
+            "enum": ["todo", "in_progress", "done", "blocked"]
+          },
+          "description": { "type": "string" },
+          "target": { "enum": ["vscode", "fabric", "toolbox"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision", "reason", "at"],
+        "properties": {
+          "decision": { "type": "string" },
+          "reason": { "type": "string" },
+          "at": { "type": "string", "format": "date-time" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

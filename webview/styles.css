@@ -1,0 +1,152 @@
+:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--vscode-foreground);
+  background: var(--vscode-sideBar-background);
+  font-family: var(--vscode-font-family);
+}
+
+main {
+  padding: 14px;
+}
+
+header {
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--vscode-descriptionForeground);
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+h2 {
+  margin-top: 22px;
+  font-size: 14px;
+}
+
+h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+p {
+  line-height: 1.45;
+}
+
+.muted {
+  color: var(--vscode-descriptionForeground);
+}
+
+.statusGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.statusCard,
+.toolCard,
+.principle {
+  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+  border-radius: 6px;
+}
+
+.statusCard {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statusCard span {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+button {
+  width: 100%;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+button.secondary,
+.linkButton {
+  color: var(--vscode-foreground);
+  background: transparent;
+  border-color: var(--vscode-panel-border);
+}
+
+.toolList {
+  display: grid;
+  gap: 8px;
+}
+
+.toolCard {
+  padding: 10px;
+}
+
+.toolHeader {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.toolCard p {
+  margin: 8px 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.badge {
+  flex: 0 0 auto;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 9px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.linkButton {
+  text-align: left;
+}
+
+.principle {
+  margin-top: 14px;
+  padding: 10px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+code {
+  color: var(--vscode-textLink-foreground);
+}

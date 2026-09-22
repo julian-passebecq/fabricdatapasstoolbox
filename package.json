@@ -1,0 +1,127 @@
+{
+  "name": "fabric-datapass-toolbox",
+  "displayName": "Datapass Fabric Toolbox",
+  "description": "A thin Microsoft Fabric companion for guided projects, checklists, project state and selected Toolbox utilities.",
+  "version": "0.1.0",
+  "publisher": "julian-passebecq",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": ["Data Science", "Other"],
+  "activationEvents": [
+    "onView:datapassFabric.checklist",
+    "onView:datapassFabric.toolbox",
+    "onCommand:datapassFabric.initializeProject"
+  ],
+  "main": "./dist/extension.js",
+  "extensionDependencies": [
+    "fabric.vscode-fabric"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "datapassFabric.initializeProject",
+        "title": "Initialize Fabric Project",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.openManifest",
+        "title": "Open Project Manifest",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.toggleTask",
+        "title": "Toggle Checklist Task",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.refresh",
+        "title": "Refresh",
+        "category": "Datapass Fabric",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "datapassFabric.openFabric",
+        "title": "Open Microsoft Fabric",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.exportHandoff",
+        "title": "Export AI Handoff",
+        "category": "Datapass Fabric"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "datapassFabric",
+          "title": "Datapass Fabric",
+          "icon": "resources/datapass-fabric.svg"
+        }
+      ]
+    },
+    "views": {
+      "datapassFabric": [
+        {
+          "id": "datapassFabric.checklist",
+          "name": "Project Checklist"
+        },
+        {
+          "id": "datapassFabric.toolbox",
+          "name": "Toolbox",
+          "type": "webview"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "datapassFabric.checklist",
+        "contents": "No Datapass Fabric project found.\n[Initialize Foil'o project](command:datapassFabric.initializeProject)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "datapassFabric.refresh",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation"
+        },
+        {
+          "command": "datapassFabric.openManifest",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "datapassFabric.toggleTask",
+          "when": "view == datapassFabric.checklist && viewItem == datapassFabric.task",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "check": "tsc --noEmit",
+    "package": "npm run check && npm run build && vsce package"
+  },
+  "dependencies": {
+    "@microsoft/vscode-fabric-api": "0.39.0-preview",
+    "@vscode/webview-ui-toolkit": "^1.4.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.9",
+    "typescript": "^5.9.2"
+  }
+}
