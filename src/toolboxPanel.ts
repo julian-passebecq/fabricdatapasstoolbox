@@ -10,10 +10,12 @@ import { PROJECT_TEMPLATES } from "./projectTemplates";
 import {
   configureToolboxRoot,
   copyAssessmentCommand,
+  copyFabricMgmtCommand,
   copySecurityAuditCommand,
   getToolRuntimeStatus,
   openWorkspaceMcpConfig,
   runAssessment,
+  runFabricMgmtCommand,
   runSecurityAudit
 } from "./toolRunners";
 
@@ -100,6 +102,37 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
               : "Fabric Assessment Tool command copied to the clipboard."
           );
           await this.postResult("assessment", command);
+          return;
+        }
+
+        if (message?.type === "fabricMgmt") {
+          const operation = String(message.operation ?? "");
+          const input = {
+            tenantId: message.tenantId ? String(message.tenantId) : undefined,
+            workspaceId: message.workspaceId ? String(message.workspaceId) : undefined
+          };
+          const allowed = new Set([
+            "install",
+            "connect",
+            "workspaces",
+            "lakehouses",
+            "warehouses",
+            "pipelines"
+          ]);
+          if (!allowed.has(operation)) {
+            throw new Error("Unsupported MicrosoftFabricMgmt operation.");
+          }
+
+          const command = message.action === "run"
+            ? await runFabricMgmtCommand(operation as any, input)
+            : await copyFabricMgmtCommand(operation as any, input);
+          void vscode.window.showInformationMessage(
+            message.action === "run"
+              ? "MicrosoftFabricMgmt command started in PowerShell 7."
+              : "MicrosoftFabricMgmt command copied to the clipboard."
+          );
+          await this.postResult("fabricMgmt", command);
+          return;
         }
       } catch (error) {
         const messageText = error instanceof Error ? error.message : String(error);
@@ -170,6 +203,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
             nextTitle: progress.next?.title,
             nextTaskId: progress.next?.id,
             resourceCount: Object.keys(manifest.resources).length,
+            workspaceId: manifest.resources.workspace?.id,
             issueCount: issues.length,
             readyTitles: readyTasks.map(task => task.title),
             recentActivity,
