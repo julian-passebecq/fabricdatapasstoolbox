@@ -104,7 +104,7 @@ const emptyState: ExtensionState = {
 
 export function App(): React.JSX.Element {
   const [state, setState] = useState<ExtensionState>(emptyState);
-  const [activeTool, setActiveTool] = useState<"security" | "assessment" | "fabricMgmt" | "semanticAudit" | null>(null);
+  const [activeTool, setActiveTool] = useState<"security" | "assessment" | "fabricMgmt" | "semanticAudit" | "lineage" | null>(null);
   const [securityUrl, setSecurityUrl] = useState("");
   const [securityUser, setSecurityUser] = useState("");
   const [assessmentSource, setAssessmentSource] = useState<"synapse" | "databricks">("synapse");
@@ -327,9 +327,17 @@ export function App(): React.JSX.Element {
               </div>
               <button
                 className="secondary catalogAction"
-                onClick={() => item.id === "semanticAudit" ? setActiveTool("semanticAudit") : open(item.id)}
+                onClick={() => {
+                  if (item.id === "semanticAudit") {
+                    setActiveTool("semanticAudit");
+                  } else if (item.id === "lineage") {
+                    setActiveTool("lineage");
+                  } else {
+                    open(item.id);
+                  }
+                }}
               >
-                {item.id === "semanticAudit" ? "Guide" : "Open"}
+                {item.id === "semanticAudit" || item.id === "lineage" ? "Guide" : "Open"}
               </button>
             </div>
           ))}
@@ -436,6 +444,67 @@ export function App(): React.JSX.Element {
           </div>
 
           <button className="linkButton" onClick={() => open("assessment")}>Open upstream source</button>
+        </section>
+      )}
+
+      {activeTool === "lineage" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Fabric Lineage Extractor</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            Guided setup for the upstream Fabric notebook that extracts column-level lineage and publishes it to Microsoft Purview.
+          </p>
+
+          <div className="securityNotice">
+            Datapass intentionally does not ask for client secrets. For durable environments, keep credentials out of notebooks and source control and use an appropriate secret store such as Azure Key Vault.
+          </div>
+
+          <div className="guideSteps">
+            <GuideStep
+              number="1"
+              title="Prepare identities"
+              text="Create or select the service principal identities used for Fabric metadata extraction and Purview publishing."
+            />
+            <GuideStep
+              number="2"
+              title="Enable Fabric API access"
+              text="Configure the required Fabric/Power BI admin settings for the security group containing the service principal."
+            />
+            <GuideStep
+              number="3"
+              title="Assign workspace and Purview roles"
+              text="Grant the identity access to the Fabric workspaces and the appropriate Purview Data Governance scope."
+            />
+            <GuideStep
+              number="4"
+              title="Import the Fabric notebook"
+              text="Open the upstream Lineage_Extractor assets and import the notebook into a test Fabric workspace."
+            />
+            <GuideStep
+              number="5"
+              title="Configure non-secret identifiers"
+              text="Set tenant IDs, client IDs, workspace scope and the Fabric SQL connection string. Keep secrets in a secure secret store."
+            />
+            <GuideStep
+              number="6"
+              title="Run on a test workspace"
+              text="Validate extracted Lakehouse/Warehouse columns, PBIP/PBIR report sources and Data Pipeline copy mappings before expanding scope."
+            />
+            <GuideStep
+              number="7"
+              title="Inspect Purview lineage"
+              text="Review the generated column-level lineage graph and exported DataFrames for impact analysis."
+            />
+          </div>
+
+          <div className="buttonRow">
+            <button onClick={() => open("fabric")}>Open Fabric</button>
+            <button className="secondary" onClick={() => command("recordResource")}>Record resource</button>
+          </div>
+          <button className="linkButton" onClick={() => open("lineage")}>Open upstream lineage assets</button>
         </section>
       )}
 
