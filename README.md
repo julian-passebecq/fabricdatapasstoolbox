@@ -7,7 +7,7 @@ This repository intentionally does **not** fork Microsoft Fabric for VS Code, Fa
 - **Microsoft Fabric VS Code extension** — official authentication, workspace navigation, item creation/import/export and the Fabric developer shell.
 - **FabricStudio (Gerhard Brueckl)** — optional mature UI for workspaces, definitions, deployment pipelines, connections, capacities, administration, API notebooks and related power-user workflows.
 - **Microsoft Fabric Toolbox** — upstream catalog of accelerators, monitoring assets, migration tools, scripts and MCP servers.
-- **Datapass Fabric Toolbox** — the missing orchestration layer: project checklist, machine-readable project state, AI handoff and light UI around useful CLI/script-only tools.
+- **Datapass Fabric Toolbox** — the missing orchestration layer: project checklist, machine-readable project state, resource inventory, AI handoff and light UI around useful CLI/script-only tools.
 
 ## Current integration mode
 
@@ -17,7 +17,7 @@ For private/unpublished builds, Datapass currently integrates through the **comm
 
 That means we do **not** spoof an approved satellite identity and we do **not** fork the core extension. If Datapass is allow-listed later, the direct service-collection integration can be added behind the same adapter.
 
-## V0.3
+## V0.4
 
 The extension now provides:
 
@@ -27,6 +27,8 @@ The extension now provides:
 - task actions for **open/start**, **in progress**, **done**, **blocked**, and **todo**;
 - upstream Fabric command handoff with portal fallback;
 - persisted **`fabric.project.json`** project state with JSON schema validation;
+- manual **Fabric resource capture** (workspace, Eventstream, Eventhouse, Lakehouse, notebooks, semantic model, report, deployment pipeline);
+- GUID extraction from pasted Fabric item URLs;
 - a first **Foil'o real-time wind telemetry** project template;
 - automatic **`FABRIC_HANDOFF.md`** export for ChatGPT/Codex/Copilot;
 - a React **Toolbox** webview with current-project status;
@@ -75,6 +77,12 @@ npm run package
 
 Marketplace publication is not required for personal use; install the generated VSIX directly in VS Code.
 
+## Resource inventory
+
+Use **Datapass Fabric: Record Fabric Resource** or the database icon on the checklist view.
+
+You can paste either a GUID or a Fabric item URL. Datapass records the name, extracted ID, and original URL in `fabric.project.json`. This gives ChatGPT/Codex enough state to understand which concrete Fabric items already exist.
+
 ## Local Fabric Toolbox
 
 The Security Audit wrapper deliberately does not copy Microsoft Fabric Toolbox scripts into this repository.
@@ -109,7 +117,7 @@ Install the upstream tool as documented by Microsoft Fabric Toolbox. Datapass de
 fat
 ```
 
-You can override it with `datapassFabric.assessmentCommand`.
+You can override it with `datapassFabric.assessmentCommand`; executable paths with spaces are supported.
 
 ## MCP
 
@@ -127,7 +135,7 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 - completed work;
 - in-progress work;
 - remaining checklist tasks;
-- known Fabric resource names/IDs;
+- known Fabric resource names/IDs/URLs;
 - architectural decisions.
 
 ## What we do not duplicate
@@ -149,8 +157,8 @@ The extension can export `FABRIC_HANDOFF.md`, summarizing:
 
 ## Next gates
 
-1. Pass CI and consume the generated VSIX artifact.
-2. Add resource capture (workspace/item IDs) back into `fabric.project.json`.
+1. Install the CI-generated VSIX in VS Code and verify the interaction flow against a real Fabric tenant.
+2. Add task-to-resource linkage so completing "Create Lakehouse", for example, can prompt to record the Lakehouse immediately.
 3. Add richer task-specific deep links and validation.
 4. Expand monitoring/deployment tool adapters selectively.
 5. Add a second project template (Contoso batch/medallion) after the Foil'o path is stable.

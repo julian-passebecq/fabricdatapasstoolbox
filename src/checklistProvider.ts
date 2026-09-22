@@ -46,14 +46,15 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
   getTreeItem(element: ChecklistNode): vscode.TreeItem {
     if (element.kind === "project") {
       const progress = getProgress(element.manifest);
+      const resourceCount = Object.keys(element.manifest.resources).length;
       const item = new vscode.TreeItem(
         element.manifest.project.name,
         vscode.TreeItemCollapsibleState.None
       );
       item.iconPath = new vscode.ThemeIcon("graph");
-      item.description = `${progress.done}/${progress.total} · ${progress.percent}%`;
+      item.description = `${progress.done}/${progress.total} · ${progress.percent}% · ${resourceCount} resources`;
       item.tooltip = new vscode.MarkdownString(
-        `**${element.manifest.project.name}**\n\nType: ${element.manifest.project.type}\n\nEnvironment: ${element.manifest.project.environment}\n\nProgress: ${progress.percent}%`
+        `**${element.manifest.project.name}**\n\nType: ${element.manifest.project.type}\n\nEnvironment: ${element.manifest.project.environment}\n\nProgress: ${progress.percent}%\n\nResources recorded: ${resourceCount}`
       );
       item.command = {
         command: "datapassFabric.showProjectSummary",

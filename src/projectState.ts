@@ -11,6 +11,12 @@ export interface FabricTask {
   target?: "vscode" | "fabric" | "toolbox";
 }
 
+export interface FabricResource {
+  name?: string;
+  id?: string;
+  notes?: string;
+}
+
 export interface FabricProjectManifest {
   schemaVersion: 1;
   project: {
@@ -27,7 +33,7 @@ export interface FabricProjectManifest {
     layers: string[];
     serving: string[];
   };
-  resources: Record<string, { name?: string; id?: string; notes?: string }>;
+  resources: Record<string, FabricResource>;
   tasks: FabricTask[];
   decisions: Array<{ decision: string; reason: string; at: string }>;
 }
@@ -269,6 +275,20 @@ export async function toggleTask(taskId: string): Promise<FabricProjectManifest 
   return manifest;
 }
 
+export async function upsertResource(
+  key: string,
+  value: FabricResource
+): Promise<FabricProjectManifest | undefined> {
+  const manifest = await readManifest();
+  if (!manifest) {
+    return undefined;
+  }
+
+  manifest.resources[key] = value;
+  await writeManifest(manifest);
+  return manifest;
+}
+
 export function getProgress(manifest: FabricProjectManifest): ProjectProgress {
   const done = manifest.tasks.filter(task => task.status === "done").length;
   const total = manifest.tasks.length;
@@ -305,7 +325,7 @@ export function renderHandoff(manifest: FabricProjectManifest): string {
   const resourceEntries = Object.entries(manifest.resources);
   const resources = resourceEntries.length
     ? resourceEntries
-        .map(([key, value]) => `- **${key}**: ${value.name ?? "(unnamed)"}${value.id ? ` — ${value.id}` : ""}`)
+        .map(([key, value]) => `- **${key}**: ${value.name ?? "(unnamed)"}${value.id ? ` — ${value.id}` : ""}${value.notes ? ` — ${value.notes}` : ""}`)
         .join("\n")
     : "- None recorded yet";
 

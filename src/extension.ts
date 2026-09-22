@@ -9,8 +9,10 @@ import {
   readManifest,
   setTaskStatus,
   TaskStatus,
-  toggleTask
+  toggleTask,
+  upsertResource
 } from "./projectState";
+import { captureResource } from "./resourceCapture";
 import { ToolboxViewProvider } from "./toolboxPanel";
 import { configureToolboxRoot, openWorkspaceMcpConfig } from "./toolRunners";
 
@@ -56,6 +58,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           "No fabric.project.json found. Initialize the project first."
         );
       }
+    }),
+
+    vscode.commands.registerCommand("datapassFabric.recordResource", async () => {
+      const manifest = await readManifest();
+      if (!manifest) {
+        void vscode.window.showWarningMessage("Initialize a Fabric project first.");
+        return;
+      }
+
+      const captured = await captureResource();
+      if (!captured) {
+        return;
+      }
+
+      await upsertResource(captured.key, captured.value);
+      refreshAll();
+      void vscode.window.showInformationMessage(
+        `Recorded ${captured.key} in fabric.project.json.`
+      );
     }),
 
     vscode.commands.registerCommand("datapassFabric.taskAction", async (taskId: string) => {
@@ -129,14 +150,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       const progress = getProgress(manifest);
       const next = progress.next?.title ?? "Checklist complete";
+      const resources = Object.keys(manifest.resources).length;
       const action = await vscode.window.showInformationMessage(
-        `${manifest.project.name}: ${progress.done}/${progress.total} complete (${progress.percent}%). Next: ${next}.`,
+        `${manifest.project.name}: ${progress.done}/${progress.total} complete (${progress.percent}%), ${resources} resources recorded. Next: ${next}.`,
+        "Record resource",
         "Open manifest",
         "Export AI handoff",
         "Open Fabric"
       );
 
-      if (action === "Open manifest") {
+      if (action === "Record resource") {
+        await vscode.commands.executeCommand("datapassFabric.recordResource");
+      } else if (action === "Open manifest") {
         await vscode.commands.executeCommand("datapassFabric.openManifest");
       } else if (action === "Export AI handoff") {
         await vscode.commands.executeCommand("datapassFabric.exportHandoff");
@@ -194,12 +219,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   manifestWatcher.onDidCreate(refreshAll);
   manifestWatcher.onDidDelete(refreshAll);
 
-  const mcpWatcher = vscode.workspace.createFileSystemWatcher("**/{.vscode/mcp.json,.mcp.json}");
-  mcpWatcher.onDidChange(refreshAll);
-  mcpWatcher.onDidCreate(refreshAll);
-  mcpWatcher.onDidDelete(refreshAll);
+  const vscodeMcpWatcher = vscode.workspace.createFileSystemWatcher("**/.vscode/mcp.json");
+  vscodeMcpWatcher.onDidChange(refreshAll);
+  vscodeMcpWatcher.onDidCreate(refreshAll);
+  vscodeMcpWatcher.onDidDelete(refreshAll);
 
-  context.subscriptions.push(manifestWatcher, mcpWatcher);
+  const portableMcpWatcher = vscode.workspace.createFileSystemWatcher("**/.mcp.json");
+  portableMcpWatcher.onDidChange(refreshAll);
+  portableMcpWatcher.onDidCreate(refreshAll);
+  portableMcpWatcher.onDidDelete(refreshAll);
+
+  context.subscriptions.push(manifestWatcher, vscodeMcpWatcher, portableMcpWatcher);
   refreshAll();
 }
 

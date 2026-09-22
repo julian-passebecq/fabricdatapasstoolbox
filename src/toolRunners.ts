@@ -179,7 +179,8 @@ function buildAssessmentCommand(input: {
   const output = sanitize(input.output || "./fabric-assessment-output", "Output path");
 
   const parts = [
-    command,
+    "&",
+    psQuote(command),
     "assess",
     "--source",
     input.source,
