@@ -1,0 +1,807 @@
+import React, { useEffect, useState } from "react";
+
+declare function acquireVsCodeApi(): {
+  postMessage(message: unknown): void;
+};
+
+const vscode = acquireVsCodeApi();
+
+type Environment = {
+  coreInstalled: boolean;
+  coreActive: boolean;
+  studioInstalled: boolean;
+  studioActive: boolean;
+  bridgeMode: "commands" | "portal";
+};
+
+type Runtime = {
+  toolboxRoot?: string;
+  securityAuditReady: boolean;
+  securityAuditPath?: string;
+  assessmentCommand: string;
+  workspaceMcpConfigured: boolean;
+  portableMcpConfigured: boolean;
+};
+
+type ProjectSummary = {
+  name: string;
+  type: string;
+  environment: string;
+  templateId?: string;
+  templateName?: string;
+  templateVersion?: number;
+  templateCurrentVersion?: number;
+  templateOutdated: boolean;
+  done: number;
+  total: number;
+  percent: number;
+  nextTitle?: string;
+  nextTaskId?: string;
+  resourceCount: number;
+  workspaceId?: string;
+  issueCount: number;
+  readyTitles: string[];
+  recentActivity: Array<{
+    title: string;
+    status: string;
+    at?: string;
+  }>;
+  architectureStages: Array<{
+    label: string;
+    items: string[];
+  }>;
+};
+
+type ManifestStatus = {
+  exists: boolean;
+  errors: string[];
+};
+
+type ExtensionState = {
+  environment: Environment;
+  runtime: Runtime;
+  tools: Tool[];
+  catalogItems: CatalogItem[];
+  manifestStatus: ManifestStatus;
+  project?: ProjectSummary;
+};
+
+type Tool = {
+  id: string;
+  name: string;
+  description: string;
+  ui: "Existing UI" | "Datapass UI" | "CLI / Script";
+};
+
+type CatalogItem = {
+  id: string;
+  name: string;
+  category: string;
+  surface: string;
+};
+
+const emptyState: ExtensionState = {
+  environment: {
+    coreInstalled: false,
+    coreActive: false,
+    studioInstalled: false,
+    studioActive: false,
+    bridgeMode: "portal"
+  },
+  runtime: {
+    securityAuditReady: false,
+    assessmentCommand: "fat",
+    workspaceMcpConfigured: false,
+    portableMcpConfigured: false
+  },
+  tools: [],
+  catalogItems: [],
+  manifestStatus: {
+    exists: false,
+    errors: []
+  }
+};
+
+export function App(): React.JSX.Element {
+  const [state, setState] = useState<ExtensionState>(emptyState);
+  const [activeTool, setActiveTool] = useState<"security" | "assessment" | "fabricMgmt" | "semanticAudit" | "lineage" | null>(null);
+  const [securityUrl, setSecurityUrl] = useState("");
+  const [securityUser, setSecurityUser] = useState("");
+  const [assessmentSource, setAssessmentSource] = useState<"synapse" | "databricks">("synapse");
+  const [assessmentWorkspace, setAssessmentWorkspace] = useState("");
+  const [assessmentOutput, setAssessmentOutput] = useState("./fabric-assessment-output");
+  const [fabricMgmtTenantId, setFabricMgmtTenantId] = useState("");
+  const [fabricMgmtWorkspaceId, setFabricMgmtWorkspaceId] = useState("");
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [result, setResult] = useState("");
+
+  useEffect(() => {
+    const listener = (event: MessageEvent) => {
+      if (event.data?.type === "state") {
+        setState({
+          environment: event.data.environment,
+          runtime: event.data.runtime,
+          tools: Array.isArray(event.data.tools) ? event.data.tools : [],
+          catalogItems: Array.isArray(event.data.catalogItems) ? event.data.catalogItems : [],
+          manifestStatus: event.data.manifestStatus ?? { exists: false, errors: [] },
+          project: event.data.project
+        });
+        const workspaceId = event.data.project?.workspaceId;
+        if (typeof workspaceId === "string" && workspaceId) {
+          setFabricMgmtWorkspaceId(current => current || workspaceId);
+        }
+      } else if (event.data?.type === "toolResult") {
+        setResult(String(event.data.command ?? ""));
+      } else if (event.data?.type === "toolError") {
+        setResult(`Error: ${String(event.data.message ?? "Unknown error")}`);
+      }
+    };
+
+    window.addEventListener("message", listener);
+    vscode.postMessage({ type: "ready" });
+    return () => window.removeEventListener("message", listener);
+  }, []);
+
+  const normalizedCatalogQuery = catalogQuery.trim().toLowerCase();
+  const toolCoverage = {
+    existing: state.tools.filter(tool => tool.ui === "Existing UI").length,
+    datapass: state.tools.filter(tool => tool.ui === "Datapass UI").length,
+    cli: state.tools.filter(tool => tool.ui === "CLI / Script").length
+  };
+  const filteredCatalog = state.catalogItems.filter(item => {
+    if (!normalizedCatalogQuery) {
+      return true;
+    }
+    return [item.name, item.category, item.surface]
+      .some(value => value.toLowerCase().includes(normalizedCatalogQuery));
+  });
+
+  return (
+    <main>
+      <header>
+        <p className="eyebrow">DATAPASS FABRIC</p>
+        <h1>Toolbox</h1>
+        <p className="muted">
+          Project guidance plus useful Fabric utilities, without duplicating good upstream UIs.
+        </p>
+      </header>
+
+      {state.project ? (
+        <section className="projectCard">
+          <div className="projectHeader">
+            <div>
+              <span className="smallLabel">CURRENT PROJECT</span>
+              <h2>{state.project.name}</h2>
+            </div>
+            <strong>{state.project.percent}%</strong>
+          </div>
+          <progress
+            className="progressTrack"
+            max={100}
+            value={state.project.percent}
+            aria-label="Project progress"
+          />
+          <p className="projectMeta">
+            {state.project.done}/{state.project.total} complete · {state.project.type} · {state.project.environment}
+          </p>
+          <div className="templateRow">
+            <p className="templateMeta">
+              <strong>Template:</strong>{" "}
+              {state.project.templateName ?? state.project.templateId ?? "Custom"}
+              {state.project.templateVersion ? ` · v${state.project.templateVersion}` : ""}
+              {state.project.templateOutdated && state.project.templateCurrentVersion
+                ? ` · update available: v${state.project.templateCurrentVersion}`
+                : ""}
+            </p>
+            <button
+              className="secondary templateCheck"
+              onClick={() => command("templateStatus")}
+            >
+              Check
+            </button>
+          </div>
+          <div className="projectHealth">
+            <span>{state.project.resourceCount} resources recorded</span>
+            <span className={state.project.issueCount ? "healthIssue" : "healthOk"}>
+              {state.project.issueCount
+                ? `${state.project.issueCount} validation issue${state.project.issueCount === 1 ? "" : "s"}`
+                : "State consistent"}
+            </span>
+          </div>
+          <p className="next">
+            <strong>Next:</strong> {state.project.nextTitle ?? "Checklist complete"}
+          </p>
+          {state.project.readyTitles.length > 0 && (
+            <p className="readyNow">
+              <strong>Ready now:</strong> {state.project.readyTitles.join(" · ")}
+            </p>
+          )}
+          {state.project.recentActivity.length > 0 && (
+            <div className="recentActivity">
+              <span className="smallLabel">RECENT ACTIVITY</span>
+              {state.project.recentActivity.map(item => (
+                <div className="activityRow" key={`${item.title}-${item.at}`}>
+                  <span>{item.title}</span>
+                  <small>{item.status.replace("_", " ")} · {item.at}</small>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="architecture">
+            <span className="smallLabel">ARCHITECTURE</span>
+            <div className="architectureFlow">
+              {state.project.architectureStages.map((stage, index) => (
+                <React.Fragment key={stage.label}>
+                  <div className="architectureStage">
+                    <strong>{stage.label}</strong>
+                    <div className="architectureItems">
+                      {stage.items.map(item => <span key={item}>{item}</span>)}
+                    </div>
+                  </div>
+                  {index < state.project!.architectureStages.length - 1 && (
+                    <span className="architectureArrow" aria-hidden="true">→</span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+          <div className="buttonRow">
+            <button
+              disabled={!state.project.nextTaskId}
+              onClick={() => command("next")}
+            >
+              {state.project.nextTaskId ? "Start next step" : "Checklist complete"}
+            </button>
+            <button className="secondary" onClick={() => command("validate")}>Validate state</button>
+          </div>
+          <div className="buttonRow compactRow">
+            <button className="secondary" onClick={() => command("checklist")}>Open checklist</button>
+            <button className="secondary" onClick={() => command("handoff")}>AI handoff</button>
+          </div>
+        </section>
+      ) : state.manifestStatus.exists && state.manifestStatus.errors.length > 0 ? (
+        <section className="emptyProject manifestInvalid">
+          <strong>Project manifest is invalid.</strong>
+          <p>Datapass will not overwrite it. Fix the manifest before continuing.</p>
+          <ul className="manifestErrorList">
+            {state.manifestStatus.errors.slice(0, 5).map(error => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+          <button onClick={() => command("openManifest")}>Open fabric.project.json</button>
+        </section>
+      ) : (
+        <section className="emptyProject">
+          <strong>No project manifest detected.</strong>
+          <p>Choose a guided Fabric architecture for the currently opened folder.</p>
+          <button onClick={() => command("initialize")}>Choose project template</button>
+        </section>
+      )}
+
+      <section className="statusGrid">
+        <StatusCard
+          name="Microsoft Fabric"
+          value={state.environment.coreInstalled ? "Installed" : "Not detected"}
+          detail={state.environment.bridgeMode === "commands" ? "VS Code command bridge" : "Portal fallback"}
+        />
+        <StatusCard
+          name="FabricStudio"
+          value={state.environment.studioInstalled ? "Installed" : "Optional"}
+          detail={state.environment.studioActive ? "Active" : "Power-user UI"}
+        />
+      </section>
+
+      <section className="actions">
+        <button onClick={() => open("fabric")}>Open Fabric</button>
+      </section>
+
+      <section>
+        <h2>Useful tools</h2>
+        <div className="coverageGrid">
+          <div><strong>{toolCoverage.existing}</strong><span>Existing UI</span></div>
+          <div><strong>{toolCoverage.datapass}</strong><span>Datapass UI</span></div>
+          <div><strong>{toolCoverage.cli}</strong><span>CLI / script</span></div>
+        </div>
+        <div className="toolList">
+          {state.tools.map(tool => (
+            <article className="toolCard" key={tool.id}>
+              <div className="toolHeader">
+                <h3>{tool.name}</h3>
+                <span className="badge">{tool.ui}</span>
+              </div>
+              <p>{tool.description}</p>
+              {renderToolAction(tool)}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2>Curated Fabric Toolbox catalog</h2>
+        <p className="muted catalogIntro">
+          Useful upstream assets that already exist. Datapass links to them rather than copying their implementation.
+        </p>
+        <input
+          className="catalogSearch"
+          value={catalogQuery}
+          onChange={event => setCatalogQuery(event.target.value)}
+          placeholder="Filter monitoring, migration, BI, MCP..."
+          aria-label="Filter Fabric Toolbox catalog"
+        />
+        <div className="catalogList">
+          {filteredCatalog.map(item => (
+            <div className="catalogRow" key={item.id}>
+              <div>
+                <strong>{item.name}</strong>
+                <div className="catalogMeta">{item.category} · {item.surface}</div>
+              </div>
+              <button
+                className="secondary catalogAction"
+                onClick={() => {
+                  if (item.id === "semanticAudit") {
+                    setActiveTool("semanticAudit");
+                  } else if (item.id === "lineage") {
+                    setActiveTool("lineage");
+                  } else {
+                    open(item.id);
+                  }
+                }}
+              >
+                {item.id === "semanticAudit" || item.id === "lineage" ? "Guide" : "Open"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {activeTool === "security" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Security Audit</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            Runs the upstream <code>Invoke-FabricSecurityAudit.ps1</code> script from your local Fabric Toolbox clone.
+          </p>
+
+          <RuntimeNotice
+            ready={state.runtime.securityAuditReady}
+            readyText={state.runtime.securityAuditPath ?? "Security audit script detected"}
+            missingText="Configure the local Fabric Toolbox folder before running this tool."
+            onConfigure={() => command("configureToolboxRoot")}
+          />
+
+          <label>
+            Fabric / Power BI item URL
+            <input
+              value={securityUrl}
+              onChange={event => setSecurityUrl(event.target.value)}
+              placeholder="https://app.fabric.microsoft.com/groups/.../warehouses/..."
+            />
+          </label>
+
+          <label>
+            User (optional)
+            <input
+              value={securityUser}
+              onChange={event => setSecurityUser(event.target.value)}
+              placeholder="user@contoso.com"
+            />
+          </label>
+
+          <div className="buttonRow">
+            <button
+              disabled={!state.runtime.securityAuditReady}
+              onClick={() => security("copy")}
+            >
+              Copy command
+            </button>
+            <button
+              disabled={!state.runtime.securityAuditReady}
+              onClick={() => security("run")}
+            >
+              Run in PowerShell
+            </button>
+          </div>
+
+          <button className="linkButton" onClick={() => open("security")}>Open upstream source</button>
+        </section>
+      )}
+
+      {activeTool === "assessment" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Fabric Assessment Tool</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            Uses the configured <code>{state.runtime.assessmentCommand}</code> command. Authentication remains with the upstream CLI.
+          </p>
+
+          <label>
+            Source
+            <select
+              value={assessmentSource}
+              onChange={event => setAssessmentSource(event.target.value as "synapse" | "databricks")}
+            >
+              <option value="synapse">Azure Synapse</option>
+              <option value="databricks">Databricks</option>
+            </select>
+          </label>
+
+          <label>
+            Workspace (optional)
+            <input
+              value={assessmentWorkspace}
+              onChange={event => setAssessmentWorkspace(event.target.value)}
+              placeholder="workspace-name"
+            />
+          </label>
+
+          <label>
+            Output folder
+            <input
+              value={assessmentOutput}
+              onChange={event => setAssessmentOutput(event.target.value)}
+            />
+          </label>
+
+          <div className="buttonRow">
+            <button onClick={() => assessment("copy")}>Copy command</button>
+            <button onClick={() => assessment("run")}>Run in PowerShell</button>
+          </div>
+
+          <button className="linkButton" onClick={() => open("assessment")}>Open upstream source</button>
+        </section>
+      )}
+
+      {activeTool === "lineage" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Fabric Lineage Extractor</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            Guided setup for the upstream Fabric notebook that extracts column-level lineage and publishes it to Microsoft Purview.
+          </p>
+
+          <div className="securityNotice">
+            Datapass intentionally does not ask for client secrets. For durable environments, keep credentials out of notebooks and source control and use an appropriate secret store such as Azure Key Vault.
+          </div>
+
+          <div className="guideSteps">
+            <GuideStep
+              number="1"
+              title="Prepare identities"
+              text="Create or select the service principal identities used for Fabric metadata extraction and Purview publishing."
+            />
+            <GuideStep
+              number="2"
+              title="Enable Fabric API access"
+              text="Configure the required Fabric/Power BI admin settings for the security group containing the service principal."
+            />
+            <GuideStep
+              number="3"
+              title="Assign workspace and Purview roles"
+              text="Grant the identity access to the Fabric workspaces and the appropriate Purview Data Governance scope."
+            />
+            <GuideStep
+              number="4"
+              title="Import the Fabric notebook"
+              text="Open the upstream Lineage_Extractor assets and import the notebook into a test Fabric workspace."
+            />
+            <GuideStep
+              number="5"
+              title="Configure non-secret identifiers"
+              text="Set tenant IDs, client IDs, workspace scope and the Fabric SQL connection string. Keep secrets in a secure secret store."
+            />
+            <GuideStep
+              number="6"
+              title="Run on a test workspace"
+              text="Validate extracted Lakehouse/Warehouse columns, PBIP/PBIR report sources and Data Pipeline copy mappings before expanding scope."
+            />
+            <GuideStep
+              number="7"
+              title="Inspect Purview lineage"
+              text="Review the generated column-level lineage graph and exported DataFrames for impact analysis."
+            />
+          </div>
+
+          <div className="buttonRow">
+            <button onClick={() => open("fabric")}>Open Fabric</button>
+            <button className="secondary" onClick={() => command("recordResource")}>Record resource</button>
+          </div>
+          <button className="linkButton" onClick={() => open("lineage")}>Open upstream lineage assets</button>
+        </section>
+      )}
+
+      {activeTool === "semanticAudit" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Semantic Model Audit</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            The upstream tool is a Fabric notebook plus a Power BI template. Datapass guides the setup instead of pretending it is a local CLI.
+          </p>
+
+          <div className="guideSteps">
+            <GuideStep
+              number="1"
+              title="Enable Workspace Monitoring"
+              text="The audit relies on Fabric workspace monitoring data for query and model history."
+            />
+            <GuideStep
+              number="2"
+              title="Import the audit notebook"
+              text="Open the upstream SemanticModelAudit assets and import the notebook into your Fabric workspace."
+            />
+            <GuideStep
+              number="3"
+              title="Attach a Lakehouse"
+              text="Attach the Lakehouse that will persist audit logs and star-schema history."
+            />
+            <GuideStep
+              number="4"
+              title="Choose semantic models"
+              text="Edit the notebook configuration cell with the models and audit options you want to inspect."
+            />
+            <GuideStep
+              number="5"
+              title="Run, verify, then schedule"
+              text="Run interactively first. Once output is correct, schedule repeated runs for useful history."
+            />
+            <GuideStep
+              number="6"
+              title="Connect the report template"
+              text="Use the supplied Power BI template against the generated audit tables."
+            />
+          </div>
+
+          <div className="buttonRow">
+            <button onClick={() => open("fabric")}>Open Fabric</button>
+            <button className="secondary" onClick={() => command("recordResource")}>Record resource</button>
+          </div>
+          <button className="linkButton" onClick={() => open("semanticAudit")}>Open upstream audit assets</button>
+        </section>
+      )}
+
+      {activeTool === "fabricMgmt" && (
+        <section className="guidedPanel">
+          <div className="toolHeader">
+            <h2>Microsoft Fabric Management</h2>
+            <button className="iconButton" onClick={() => setActiveTool(null)}>Close</button>
+          </div>
+
+          <p className="muted">
+            Guided PowerShell 7 commands for the upstream <code>MicrosoftFabricMgmt</code> module.
+            Datapass does not collect passwords, client secrets, or service-principal credentials.
+          </p>
+
+          <div className="runtimeReady">
+            Explicit actions only. Install is never run automatically. Interactive Fabric authentication remains in PowerShell/browser.
+          </div>
+
+          <label>
+            Tenant ID
+            <input
+              value={fabricMgmtTenantId}
+              onChange={event => setFabricMgmtTenantId(event.target.value)}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            />
+          </label>
+
+          <label>
+            Workspace ID
+            <input
+              value={fabricMgmtWorkspaceId}
+              onChange={event => setFabricMgmtWorkspaceId(event.target.value)}
+              placeholder="workspace GUID"
+            />
+          </label>
+
+          <div className="managementGrid">
+            <ManagementAction
+              title="Check module"
+              description="Show installed MicrosoftFabricMgmt versions and paths without changing the machine."
+              onCopy={() => fabricMgmt("status", "copy")}
+              onRun={() => fabricMgmt("status", "run")}
+            />
+            <ManagementAction
+              title="Install module"
+              description="Install MicrosoftFabricMgmt from PowerShell Gallery for the current user."
+              onCopy={() => fabricMgmt("install", "copy")}
+              onRun={() => fabricMgmt("install", "run")}
+            />
+            <ManagementAction
+              title="Interactive login"
+              description="Import the module and connect to your tenant interactively."
+              onCopy={() => fabricMgmt("connect", "copy")}
+              onRun={() => fabricMgmt("connect", "run")}
+            />
+            <ManagementAction
+              title="List workspaces"
+              description="Read the Fabric workspaces visible to the authenticated account."
+              onCopy={() => fabricMgmt("workspaces", "copy")}
+              onRun={() => fabricMgmt("workspaces", "run")}
+            />
+            <ManagementAction
+              title="List Lakehouses"
+              description="List Lakehouses in the selected workspace."
+              onCopy={() => fabricMgmt("lakehouses", "copy")}
+              onRun={() => fabricMgmt("lakehouses", "run")}
+            />
+            <ManagementAction
+              title="List Warehouses"
+              description="List Warehouses in the selected workspace."
+              onCopy={() => fabricMgmt("warehouses", "copy")}
+              onRun={() => fabricMgmt("warehouses", "run")}
+            />
+            <ManagementAction
+              title="List Data Pipelines"
+              description="List Fabric Data Pipelines in the selected workspace."
+              onCopy={() => fabricMgmt("pipelines", "copy")}
+              onRun={() => fabricMgmt("pipelines", "run")}
+            />
+          </div>
+
+          <button className="linkButton" onClick={() => open("fabricMgmt")}>Open upstream source</button>
+        </section>
+      )}
+
+      {result && (
+        <section className="resultPanel">
+          <span className="smallLabel">LAST GENERATED COMMAND</span>
+          <code>{result}</code>
+          <button className="linkButton" onClick={() => setResult("")}>Clear</button>
+        </section>
+      )}
+
+      <section className="mcpPanel">
+        <div>
+          <h2>MCP</h2>
+          <p className="muted">
+            Workspace: {state.runtime.workspaceMcpConfigured ? "configured" : "not configured"} · Portable: {state.runtime.portableMcpConfigured ? "configured" : "not configured"}
+          </p>
+        </div>
+        <button className="secondary" onClick={() => command("mcpConfig")}>Open MCP config</button>
+      </section>
+
+      <section className="principle">
+        <strong>Integration rule:</strong> private Datapass builds currently use Microsoft Fabric&apos;s contributed
+        VS Code commands and views. Microsoft&apos;s core currently allow-lists satellite IDs for direct
+        <code> addExtension()</code> registration, so Datapass does not hard-depend on that path yet.
+      </section>
+    </main>
+  );
+
+  function renderToolAction(tool: Tool): React.JSX.Element {
+    if (tool.id === "security") {
+      return <button className="linkButton" onClick={() => setActiveTool("security")}>Open guided UI</button>;
+    }
+    if (tool.id === "assessment") {
+      return <button className="linkButton" onClick={() => setActiveTool("assessment")}>Open guided UI</button>;
+    }
+    if (tool.id === "fabricMgmt") {
+      return <button className="linkButton" onClick={() => setActiveTool("fabricMgmt")}>Open guided UI</button>;
+    }
+    if (tool.id === "mcp") {
+      return <button className="linkButton" onClick={() => command("mcpConfig")}>Open MCP config</button>;
+    }
+
+    return (
+      <button className="linkButton" onClick={() => open(tool.id)}>
+        {tool.id === "migration" ? "Open assistant" : "Open FabricStudio"}
+      </button>
+    );
+  }
+
+  function open(target: string): void {
+    vscode.postMessage({ type: "open", target });
+  }
+
+  function command(commandName: string): void {
+    vscode.postMessage({ type: "command", command: commandName });
+  }
+
+  function security(action: "copy" | "run"): void {
+    setResult("");
+    vscode.postMessage({
+      type: "securityAudit",
+      action,
+      url: securityUrl,
+      user: securityUser
+    });
+  }
+
+  function assessment(action: "copy" | "run"): void {
+    setResult("");
+    vscode.postMessage({
+      type: "assessment",
+      action,
+      source: assessmentSource,
+      workspace: assessmentWorkspace,
+      output: assessmentOutput
+    });
+  }
+
+  function fabricMgmt(
+    operation: "status" | "install" | "connect" | "workspaces" | "lakehouses" | "warehouses" | "pipelines",
+    action: "copy" | "run"
+  ): void {
+    setResult("");
+    vscode.postMessage({
+      type: "fabricMgmt",
+      operation,
+      action,
+      tenantId: fabricMgmtTenantId,
+      workspaceId: fabricMgmtWorkspaceId
+    });
+  }
+}
+
+function ManagementAction(props: {
+  title: string;
+  description: string;
+  onCopy: () => void;
+  onRun: () => void;
+}): React.JSX.Element {
+  return (
+    <div className="managementAction">
+      <strong>{props.title}</strong>
+      <p>{props.description}</p>
+      <div className="managementButtons">
+        <button className="secondary" onClick={props.onCopy}>Copy</button>
+        <button onClick={props.onRun}>Run</button>
+      </div>
+    </div>
+  );
+}
+
+function GuideStep(props: {
+  number: string;
+  title: string;
+  text: string;
+}): React.JSX.Element {
+  return (
+    <div className="guideStep">
+      <span className="guideNumber">{props.number}</span>
+      <div>
+        <strong>{props.title}</strong>
+        <p>{props.text}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatusCard(props: { name: string; value: string; detail: string }): React.JSX.Element {
+  return (
+    <div className="statusCard">
+      <span>{props.name}</span>
+      <strong>{props.value}</strong>
+      <small>{props.detail}</small>
+    </div>
+  );
+}
+
+function RuntimeNotice(props: {
+  ready: boolean;
+  readyText: string;
+  missingText: string;
+  onConfigure: () => void;
+}): React.JSX.Element {
+  if (props.ready) {
+    return <p className="runtimeReady">{props.readyText}</p>;
+  }
+
+  return (
+    <div className="runtimeMissing">
+      <p>{props.missingText}</p>
+      <button className="secondary" onClick={props.onConfigure}>Configure Toolbox folder</button>
+    </div>
+  );
+}

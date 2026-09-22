@@ -1,0 +1,219 @@
+{
+  "name": "fabric-datapass-toolbox",
+  "displayName": "Datapass Fabric Toolbox",
+  "description": "A thin Microsoft Fabric companion for guided projects, checklists, project state and selected Toolbox utilities.",
+  "version": "0.7.0",
+  "publisher": "julian-passebecq",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/julian-passebecq/fabricdatapasstoolbox.git"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Data Science",
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:datapassFabric.checklist",
+    "onView:datapassFabric.toolbox",
+    "onCommand:datapassFabric.initializeProject"
+  ],
+  "main": "./dist/extension.js",
+  "extensionDependencies": [
+    "fabric.vscode-fabric"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Datapass Fabric",
+      "properties": {
+        "datapassFabric.toolboxRoot": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Local path to a clone of Microsoft Fabric Toolbox (or your fabric-toolbox_J fork). Used to launch script-based tools such as Fabric Security Audit."
+        },
+        "datapassFabric.assessmentCommand": {
+          "type": "string",
+          "default": "fat",
+          "scope": "resource",
+          "description": "Command or executable path used to launch Fabric Assessment Tool after it has been installed."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "datapassFabric.initializeProject",
+        "title": "Initialize Fabric Project",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.openManifest",
+        "title": "Open Project Manifest",
+        "category": "Datapass Fabric",
+        "icon": "$(json)"
+      },
+      {
+        "command": "datapassFabric.recordResource",
+        "title": "Record Fabric Resource",
+        "category": "Datapass Fabric",
+        "icon": "$(database)"
+      },
+      {
+        "command": "datapassFabric.validateProject",
+        "title": "Validate Project State",
+        "category": "Datapass Fabric",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "datapassFabric.taskAction",
+        "title": "Open Task",
+        "category": "Datapass Fabric",
+        "icon": "$(play)"
+      },
+      {
+        "command": "datapassFabric.toggleTask",
+        "title": "Toggle Task Done",
+        "category": "Datapass Fabric",
+        "icon": "$(check)"
+      },
+      {
+        "command": "datapassFabric.showProjectSummary",
+        "title": "Show Project Summary",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.checkTemplateStatus",
+        "title": "Check Project Template Status",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.configureToolboxRoot",
+        "title": "Configure Local Fabric Toolbox",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.openMcpConfig",
+        "title": "Open Workspace MCP Configuration",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.refresh",
+        "title": "Refresh",
+        "category": "Datapass Fabric",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "datapassFabric.openFabric",
+        "title": "Open Microsoft Fabric",
+        "category": "Datapass Fabric"
+      },
+      {
+        "command": "datapassFabric.exportHandoff",
+        "title": "Export AI Handoff",
+        "category": "Datapass Fabric",
+        "icon": "$(export)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "datapassFabric",
+          "title": "Datapass Fabric",
+          "icon": "resources/datapass-fabric.svg"
+        }
+      ]
+    },
+    "views": {
+      "datapassFabric": [
+        {
+          "id": "datapassFabric.checklist",
+          "name": "Project Checklist"
+        },
+        {
+          "id": "datapassFabric.toolbox",
+          "name": "Toolbox",
+          "type": "webview"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "datapassFabric.checklist",
+        "contents": "No Datapass Fabric project found.\n[Choose project template](command:datapassFabric.initializeProject)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "datapassFabric.refresh",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation@1"
+        },
+        {
+          "command": "datapassFabric.openManifest",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation@2"
+        },
+        {
+          "command": "datapassFabric.recordResource",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation@3"
+        },
+        {
+          "command": "datapassFabric.validateProject",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation@4"
+        },
+        {
+          "command": "datapassFabric.exportHandoff",
+          "when": "view == datapassFabric.checklist",
+          "group": "navigation@5"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "datapassFabric.taskAction",
+          "when": "view == datapassFabric.checklist && viewItem == datapassFabric.task",
+          "group": "inline@1"
+        },
+        {
+          "command": "datapassFabric.toggleTask",
+          "when": "view == datapassFabric.checklist && viewItem == datapassFabric.task",
+          "group": "inline@2"
+        }
+      ]
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "fabric.project.json",
+        "url": "./schemas/fabric.project.schema.json"
+      }
+    ]
+  },
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/projectModel.test.ts tests/projectTemplates.test.ts tests/resourceLocator.test.ts tests/toolboxCatalog.test.ts tests/fabricMgmtCommands.test.ts",
+    "verify": "npm run check && npm test && npm run build",
+    "package": "npm run verify && vsce package"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.9",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2"
+  }
+}
