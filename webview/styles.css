@@ -111,6 +111,71 @@ p {
   font-size: 11px;
 }
 
+.projectHealth {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.healthOk {
+  color: var(--vscode-testing-iconPassed);
+}
+
+.healthIssue {
+  color: var(--vscode-testing-iconFailed);
+}
+
+.architecture {
+  margin-top: 12px;
+}
+
+.architectureFlow {
+  display: flex;
+  align-items: stretch;
+  gap: 5px;
+  margin-top: 6px;
+  overflow-x: auto;
+  padding-bottom: 3px;
+}
+
+.architectureStage {
+  min-width: 88px;
+  padding: 7px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background);
+}
+
+.architectureStage > strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+}
+
+.architectureItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.architectureItems span {
+  border-radius: 999px;
+  padding: 2px 5px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.architectureArrow {
+  align-self: center;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
 .buttonRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
