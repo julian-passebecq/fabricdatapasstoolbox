@@ -5,7 +5,7 @@ import {
   getProgress,
   getProjectIssues,
   getUnmetDependencies,
-  readManifest
+  readManifestResult
 } from "./projectState";
 
 type ChecklistNode = ProjectNode | NextNode | PhaseNode | TaskNode | InfoNode;
@@ -139,18 +139,38 @@ export class ChecklistProvider implements vscode.TreeDataProvider<ChecklistNode>
   }
 
   async getChildren(element?: ChecklistNode): Promise<ChecklistNode[]> {
-    const manifest = await readManifest();
+    const result = await readManifestResult();
+    const manifest = result.manifest;
     if (!manifest) {
-      return element
-        ? []
-        : [{
+      if (element) {
+        return [];
+      }
+
+      if (result.exists && result.errors.length) {
+        return [
+          {
             kind: "info",
-            label: "Initialize Foil'o Fabric project",
+            label: "Invalid fabric.project.json — open to fix",
             command: {
-              command: "datapassFabric.initializeProject",
-              title: "Initialize Fabric Project"
+              command: "datapassFabric.openManifest",
+              title: "Open invalid project manifest"
             }
-          }];
+          },
+          {
+            kind: "info",
+            label: result.errors[0]
+          }
+        ];
+      }
+
+      return [{
+        kind: "info",
+        label: "Choose Fabric project template",
+        command: {
+          command: "datapassFabric.initializeProject",
+          title: "Initialize Fabric Project"
+        }
+      }];
     }
 
     if (!element) {

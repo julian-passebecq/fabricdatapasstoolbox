@@ -39,8 +39,11 @@ test("progress prioritizes an in-progress task over later todo tasks", () => {
 
 test("completed resource-linked tasks are validated against recorded resources", () => {
   const manifest = defaultFoilManifest("2026-09-22T00:00:00.000Z");
+  const login = manifest.tasks.find(task => task.id === "fabric-login");
   const workspace = manifest.tasks.find(task => task.id === "workspace");
+  assert.ok(login);
   assert.ok(workspace);
+  login.status = "done";
   workspace.status = "done";
 
   const issuesBefore = getProjectIssues(manifest);
@@ -70,7 +73,7 @@ test("handoff contains architecture, next action, resources and validation state
   assert.match(handoff, /oracle-vm -> kafka -> eventstream -> eventhouse -> lakehouse -> bronze -> silver -> gold -> sql -> power-bi/);
   assert.match(handoff, /Create or select Fabric workspace \(Foundation\) — status: in_progress/);
   assert.match(handoff, /\*\*workspace\*\*: foil-dev — workspace-guid/);
-  assert.match(handoff, /No task\/resource consistency issues detected/);
+  assert.match(handoff, /No task\/resource or dependency-sequencing issues detected/);
   assert.match(handoff, /authoritative state is `fabric\.project\.json`/);
 });
 
