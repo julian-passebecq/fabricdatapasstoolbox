@@ -167,14 +167,22 @@ export function App(): React.JSX.Element {
           <p className="projectMeta">
             {state.project.done}/{state.project.total} complete · {state.project.type} · {state.project.environment}
           </p>
-          <p className="templateMeta">
-            <strong>Template:</strong>{" "}
-            {state.project.templateName ?? state.project.templateId ?? "Custom"}
-            {state.project.templateVersion ? ` · v${state.project.templateVersion}` : ""}
-            {state.project.templateOutdated && state.project.templateCurrentVersion
-              ? ` · update available: v${state.project.templateCurrentVersion}`
-              : ""}
-          </p>
+          <div className="templateRow">
+            <p className="templateMeta">
+              <strong>Template:</strong>{" "}
+              {state.project.templateName ?? state.project.templateId ?? "Custom"}
+              {state.project.templateVersion ? ` · v${state.project.templateVersion}` : ""}
+              {state.project.templateOutdated && state.project.templateCurrentVersion
+                ? ` · update available: v${state.project.templateCurrentVersion}`
+                : ""}
+            </p>
+            <button
+              className="secondary templateCheck"
+              onClick={() => command("templateStatus")}
+            >
+              Check
+            </button>
+          </div>
           <div className="projectHealth">
             <span>{state.project.resourceCount} resources recorded</span>
             <span className={state.project.issueCount ? "healthIssue" : "healthOk"}>
