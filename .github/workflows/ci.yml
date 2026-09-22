@@ -1,47 +1,42 @@
-name: CI
+name: extension-ci
 
 on:
+  pull_request:
   push:
     branches:
       - main
       - "codex/**"
-  pull_request:
-
-permissions:
-  contents: read
 
 jobs:
-  verify:
+  validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 22
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Install
-        run: npm install --no-audit --no-fund
+      - name: Install dependencies
+        run: npm install
 
       - name: Typecheck
         run: npm run check
 
-      - name: Build
+      - name: Build extension
         run: npm run build
 
       - name: Package VSIX
         run: npm run package
 
-      - name: Collect VSIX
-        run: |
-          mkdir -p artifact
-          cp ./*.vsix artifact/
-
       - name: Upload VSIX
         uses: actions/upload-artifact@v4
         with:
-          name: datapass-fabric-vsix
-          path: artifact/*.vsix
+          name: fabric-datapass-toolbox-vsix
+          path: "*.vsix"
           if-no-files-found: error
