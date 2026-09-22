@@ -6,7 +6,8 @@ import {
   getProjectIssues,
   getReadyTasks,
   getUnmetDependencies,
-  renderHandoff
+  renderHandoff,
+  validateManifestDocument
 } from "../src/projectModel";
 
 test("Foil'o template starts with the expected architecture and checklist", () => {
@@ -130,4 +131,48 @@ test("ready task helpers expose blocked and actionable steps", () => {
 
   manifest.tasks.find(task => task.id === "fabric-login")!.status = "done";
   assert.ok(getReadyTasks(manifest).some(task => task.id === "workspace"));
+});
+
+
+test("manifest validation rejects malformed documents", () => {
+  const errors = validateManifestDocument({
+    schemaVersion: 99,
+    project: {},
+    architecture: {},
+    resources: [],
+    tasks: "not-an-array",
+    decisions: {}
+  });
+
+  assert.ok(errors.some(error => error.includes("schemaVersion")));
+  assert.ok(errors.some(error => error.includes("project.name")));
+  assert.ok(errors.some(error => error.includes("architecture.source")));
+  assert.ok(errors.some(error => error.includes("resources must be an object")));
+  assert.ok(errors.some(error => error.includes("tasks must be an array")));
+  assert.ok(errors.some(error => error.includes("decisions must be an array")));
+});
+
+test("project issues catch missing dependencies and duplicate task ids", () => {
+  const manifest = defaultFoilManifest("2026-09-22T00:00:00.000Z");
+  manifest.tasks[1].id = manifest.tasks[0].id;
+  manifest.tasks.find(task => task.id === "silver")!.dependsOn = ["missing-bronze"];
+
+  const issues = getProjectIssues(manifest);
+
+  assert.ok(issues.some(issue => issue.code === "duplicate_task_id"));
+  assert.ok(issues.some(issue =>
+    issue.code === "dependency_missing" &&
+    issue.dependencyId === "missing-bronze"
+  ));
+});
+
+test("project issues catch dependency cycles", () => {
+  const manifest = defaultFoilManifest("2026-09-22T00:00:00.000Z");
+  const login = manifest.tasks.find(task => task.id === "fabric-login")!;
+  login.dependsOn = ["workspace"];
+
+  const issues = getProjectIssues(manifest);
+
+  assert.ok(issues.some(issue => issue.code === "dependency_cycle"));
+  assert.equal(getReadyTasks(manifest).length, 0);
 });
