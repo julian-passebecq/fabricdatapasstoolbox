@@ -193,7 +193,7 @@
     "build": "npm run clean && node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "check": "tsc --noEmit",
-    "test": "tsx --test tests/projectModel.test.ts tests/projectTemplates.test.ts tests/resourceLocator.test.ts",
+    "test": "tsx --test tests/projectModel.test.ts tests/projectTemplates.test.ts tests/resourceLocator.test.ts tests/toolboxCatalog.test.ts",
     "verify": "npm run check && npm test && npm run build",
     "package": "npm run verify && vsce package"
   },
