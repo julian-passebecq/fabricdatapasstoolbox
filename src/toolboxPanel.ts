@@ -4,7 +4,7 @@ import {
   openFabricHome,
   openFabricStudio
 } from "./fabricIntegration";
-import { getProgress, readManifest } from "./projectState";
+import { getProgress, getProjectIssues, readManifest } from "./projectState";
 import {
   configureToolboxRoot,
   copyAssessmentCommand,
@@ -125,6 +125,7 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
     ]);
 
     const progress = manifest ? getProgress(manifest) : undefined;
+    const issues = manifest ? getProjectIssues(manifest) : [];
     await this.view.webview.postMessage({
       type: "state",
       environment,
@@ -137,7 +138,16 @@ export class ToolboxViewProvider implements vscode.WebviewViewProvider {
             done: progress.done,
             total: progress.total,
             percent: progress.percent,
-            nextTitle: progress.next?.title
+            nextTitle: progress.next?.title,
+            resourceCount: Object.keys(manifest.resources).length,
+            issueCount: issues.length,
+            architectureStages: [
+              { label: "Sources", items: manifest.architecture.source },
+              { label: "Ingestion", items: manifest.architecture.ingestion },
+              { label: "Storage", items: manifest.architecture.storage },
+              { label: "Medallion", items: manifest.architecture.layers },
+              { label: "Serving", items: manifest.architecture.serving }
+            ]
           }
         : undefined
     });
