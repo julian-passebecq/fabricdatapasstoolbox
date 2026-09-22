@@ -236,8 +236,8 @@ export function App(): React.JSX.Element {
       ) : (
         <section className="emptyProject">
           <strong>No project manifest detected.</strong>
-          <p>Create the Foil&apos;o starter checklist in the currently opened folder.</p>
-          <button onClick={() => command("initialize")}>Initialize Foil&apos;o project</button>
+          <p>Choose a guided Fabric architecture for the currently opened folder.</p>
+          <button onClick={() => command("initialize")}>Choose project template</button>
         </section>
       )}
 
