@@ -27,6 +27,11 @@ type ProjectSummary = {
   name: string;
   type: string;
   environment: string;
+  templateId?: string;
+  templateName?: string;
+  templateVersion?: number;
+  templateCurrentVersion?: number;
+  templateOutdated: boolean;
   done: number;
   total: number;
   percent: number;
@@ -161,6 +166,14 @@ export function App(): React.JSX.Element {
           />
           <p className="projectMeta">
             {state.project.done}/{state.project.total} complete · {state.project.type} · {state.project.environment}
+          </p>
+          <p className="templateMeta">
+            <strong>Template:</strong>{" "}
+            {state.project.templateName ?? state.project.templateId ?? "Custom"}
+            {state.project.templateVersion ? ` · v${state.project.templateVersion}` : ""}
+            {state.project.templateOutdated && state.project.templateCurrentVersion
+              ? ` · update available: v${state.project.templateCurrentVersion}`
+              : ""}
           </p>
           <div className="projectHealth">
             <span>{state.project.resourceCount} resources recorded</span>
